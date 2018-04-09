@@ -30,7 +30,7 @@ var lastFloor int
 
 
 
-func Fsm(Ch_assignedOrders chan elevio.buttonEvent, Ch_floor chan int) {
+func Fsm(Ch_assignedOrders chan elevio.buttonEvent, Ch_floor chan int, Ch_DoorTimeout chan bool) {
 	Init()
 
 	for {
@@ -41,6 +41,8 @@ func Fsm(Ch_assignedOrders chan elevio.buttonEvent, Ch_floor chan int) {
 					addOrder(newOrder)
 					executeOrder(lastFloor, newOrder.Floor)
 					state = ES_MOVING
+				case ES_DOOROPEN:
+					//reset timer
 			
 				default:
 					addOrder(newOrder) 
@@ -58,11 +60,13 @@ func Fsm(Ch_assignedOrders chan elevio.buttonEvent, Ch_floor chan int) {
 			case ES_MOVING:
 				//Sjekke om bestillinger i nådd etasje
 				if (CheckOrdersAtFloor(lastFloor)){
-					//Kan lage funksjon av dette v
+					//Kan lage funksjon av dette:
 					lastDirection = dir
 					dir = elevio.MD_Stop
 					elevio.SetMotorDirection(dir)
 					//door open
+					elevio.SetDoorOpenLamp(true)
+					//start doorTimer
 					state = ES_DOOROPEN
 					ClearOrdersAtCurrentFloor(lastFloor)
 				}
@@ -72,10 +76,37 @@ func Fsm(Ch_assignedOrders chan elevio.buttonEvent, Ch_floor chan int) {
 				//Noe gikk galt. Print ERROR
 			}
 
-		case DoorTimeout:
+		case <- Ch_DoorTimeout:
 			elevio.SetDoorOpenLamp(false)
 			if (CheckIfAnyOrders()) {
 				dir = lastDirection
+				if (CheckOrdersAtFloor(lastFloor)) {
+					//Kan lage funksjon av dette:
+					lastDirection = dir
+					dir = elevio.MD_Stop
+					elevio.SetMotorDirection(dir)
+					//door open
+					elevio.SetDoorOpenLamp(true)
+					//start timer
+					state = ES_DOOROPEN
+					ClearOrdersAtCurrentFloor(lastFloor)
+				}
+
+				else if (CheckUpcomingFloors(lastFloor)){
+					dir=lastDirection
+					elevio.SetMotorDirection(dir)
+				}
+				else{
+					changeDirection()
+					if (CheckUpcomingFloors(lastFloor)){
+					dir=lastDirection
+					elevio.SetMotorDirection(dir)
+					}
+				}
+
+			}
+			else{
+				state = ES_IDLE
 			}
 
 		}
@@ -86,7 +117,7 @@ func Init(){
 
 	fmt.Println("Initializing...")
 	elevio.SetDoorOpenLamp(false)
-	state = ES_Init
+	state = ES_INIT
 
 	for f := 0; f < 4; f++ {
 		for b := elevio.ButtonType(0); b < 3; b++ {
@@ -184,6 +215,15 @@ func ChooseDirection(floor int) int {
 	return elevio.MD_Stop
 }
 
+func changeDirection(){
+	if dir == elevio.MD_Up {
+		dir = elevio.MD_Down
+	}
+	else if dir == elevio.MD_Down{
+		dir = elevio.MD_Up
+	}
+}
+
 func executeOrder(lastFloor int, targetFloor int){
 
 	if(lastFloor < targetFloor){
@@ -240,7 +280,7 @@ func CheckOrdersAtFloor(floor int) bool {
 func CheckUpcomingFloors(lastFloor int) bool{
 	switch(dir){
 	case elevio.MD_Up:
-		return isOrderAbove(lastFloor)
+		return IsOrderAbove(lastFloor)
 	case elevio.MD_Down:
 		return IsOrderBelow(lastFloor)
 	}
@@ -249,14 +289,19 @@ func CheckUpcomingFloors(lastFloor int) bool{
 
 func IsOrderAbove(lastFloor int) bool {
 	fmt.Println("Inni isOrdersAbove")
-	if(lastFloor == )
-   for f := currentFloor + 1; f < floors; f++{
+	if(lastFloor == 3){
+		return false
+	}
+	for f := currentFloor + 1; f < floors; f++{
    		return CheckOrdersAtFloor(f))
    }
 }
 
 func IsOrderBelow(lastFloor int) bool{
 	fmt.Println("Inn i isOrdersUnder")
+	if(lastFloor == 0){
+		return false
+	}
 	for f := 0; f < currentFloor; f++{
 		return CheckOrdersAtFloor(f)
 	}
