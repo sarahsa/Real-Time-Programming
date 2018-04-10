@@ -14,7 +14,7 @@ const NumButtonsTypes = 3
 var ExecuteOrders[4][3] bool
 
 
-/*func OrderManager()  {
+func OrderManager()  {
 
 }
 
@@ -54,7 +54,7 @@ func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, e
 
     return nil
 
-}*/
+}
 
 func AddOrder(buttonPress elevio.ButtonEvent)  (bool, bool) {
 
@@ -66,4 +66,24 @@ func AddOrder(buttonPress elevio.ButtonEvent)  (bool, bool) {
     }
 
     return false, false
+}
+
+
+//lytter fra chan i main og oppdaterer etasje
+func FloorUpdate(floor chan int)  {
+
+}
+
+//lytter fra chan i main og oppdaterer retning
+func DirectionUpdate(direction chan elevio.MotorDirection){
+
+}
+
+//??
+func LampUpdate()  {
+
+}
+
+func IsElevatorAlive()  bool {
+
 }

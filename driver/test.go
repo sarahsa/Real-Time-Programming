@@ -62,6 +62,8 @@ func main() {
 			if changeMade {
 				ButtonPacketRecv <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}
 			}*/
+
+
 		}
 	}
 

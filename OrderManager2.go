@@ -65,8 +65,6 @@ type Elevator struct {
 //the cost for a single elevator
 func cost(Ch_Buttons chan elevio.ButtonEvent, packet chan Elevator) int {
 
-    var dir //new
-
     cost := 0
     floor := Elevator.Position
     dir :=  Elevator.Direction
@@ -90,7 +88,7 @@ func cost(Ch_Buttons chan elevio.ButtonEvent, packet chan Elevator) int {
             elevio.SetButtonLamp(BT_HallUp, floor, false)
             elevio.SetButtonLamp(BT_Cab, false)
         }
-        dir = chooseDirection(floor, dir)
+        //dir = chooseDirection(floor, dir)
         floor, dir = incrementFloor(floor, dir)
         cost += 2
     }
