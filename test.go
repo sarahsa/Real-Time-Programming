@@ -1,4 +1,4 @@
-package main 
+package main
 
 
 import(
@@ -6,6 +6,7 @@ import(
 	"fmt"
 	"flag"
 	"./elevio"
+	"./OrderManager"
 )
 
 //Denne burde vaare i nettverkmodulen
@@ -21,8 +22,8 @@ func main() {
 	hwPortPtr := flag.String("hwport", "15657", "select w port hw runs on")
 	flag.Parse()
 	myID := *idPtr
-	hwPort := *hwPortPtr 
-	
+	hwPort := *hwPortPtr
+
 	elevio.Init(":"+hwPort, 4)
 
 	ButtonPacketTrans := make(chan ButtonPressPacket)
@@ -41,16 +42,16 @@ func main() {
 			fmt.Println("Button press at " + myID)
 			fmt.Println(buttonPress)
 
-			orderAccepted, changeMade := orderMap.AddOrder(buttonPress)
+			orderAccepted, changeMade := OrderManager.AddOrder(buttonPress)
 
 			if changeMade {
-				ButtonPacketTrans <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}	
+				ButtonPacketTrans <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}
 			}
 
 			if orderAccepted {
 				fmt.OnButtonPress(buttonPress)
 			}
-			
+
 
 		case recvPacket := <-ButtonPacketRecv:
 			fmt.Println("Received from " + recvPacket.Sender)
