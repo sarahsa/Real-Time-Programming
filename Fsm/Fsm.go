@@ -33,6 +33,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_floor chan int, Ch_DoorTi
 	doortimer.Stop()
 
 	for {
+		//Only for debugging purposes
 		switch(state){
 		case ES_INIT:
 			fmt.Println("State: Init")
