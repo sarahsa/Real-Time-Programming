@@ -87,3 +87,57 @@ func LampUpdate()  {
 func IsElevatorAlive()  bool {
 
 }
+
+//-------------------------------------------------------------------------------------
+
+type Elevator struct {
+    floor int
+    dirn Dirn
+    request[N_FLOORS][N_BUTTONS]
+    behaviour ElevatorBehavior
+}
+
+func request_clearAtCurrentFloor(e_old Elevator, onClearedRequest(b Button, floor int)) Elevator {
+    e Elevator := e_old
+    for btn Button := 0; btn < N_BUTTONS; btn++ {
+        if (e.requests[e.floor][btn]){
+            e.requests[e.floor][btn] = 0;
+            if (onClearedRequest){
+                onClearedRequest(btn, floor)
+            }
+        }
+    }
+    return e
+}
+
+func timeToIdle(e Elevator) int{
+    duration int = 0
+
+    switch e.behaviour {
+    case EB_Idle:
+        e.dirn = requests_chooseDirection(e)
+        if e.dirn == D_Stop {
+            return duration
+        }
+        break
+    case EB_Moving:
+        duration += TRAVEL_TIME/2
+        e.floor += e.dirn
+        break
+    case EB_DoorOpen:
+        duration -= DOOR_OPEN_TIME/2
+    }
+
+    for {
+        if requests_shouldStop(e) {
+            e = request_clearAtCurrentFloor(e, nil)
+            duration += DOOR_OPEN_TIME
+            e.dirn = requests_chooseDirection(e)
+            if e.dirn == D_Stop {
+                return duration
+            }
+        }
+        e.floor += e.direction
+        duration += TRAVEL_TIME
+    }
+}
