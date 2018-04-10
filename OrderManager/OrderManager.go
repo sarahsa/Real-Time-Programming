@@ -11,7 +11,7 @@ import "time"
 const NumFloors = 4
 const NumButtonsTypes = 3
 
-// ta imot bestilling 
+// ta imot bestilling
 // starte en timer når bestillinge er mottatt
 // oppdatere backup med ny bestilling
 // posisjonene/ bestillinger til alle heiser er sync
@@ -21,18 +21,18 @@ const NumButtonsTypes = 3
 // kaller på FSM og utfører bestilling
 
 // -----------------------------------
-// Feilhåndtering: 
+// Feilhåndtering:
 // - Timer går ut = bestilling har ikke blitt utført
-// 		 Må sende bestillingen til heisen som skal utøre den på nytt 
-	
+// 		 Må sende bestillingen til heisen som skal utøre den på nytt
+
 // -----------------------------------
-// Trenger: 
+// Trenger:
 // - Gamle og nye bestillinger
-// - Poisisjonene til alle aktive heiser 
+// - Poisisjonene til alle aktive heiser
 // - Hver heis har sin egen cost-variabel
 
 // -----------------------------------
-// Forskjell på nye bestillinger-array og skal utføre-array? 
+// Forskjell på nye bestillinger-array og skal utføre-array?
 
 //save backup to disk
 
@@ -46,7 +46,7 @@ func saveToDisk(filname string) error{
 			return err
 		}
 
-        //func WriteFile(filename string, data []byte, perm os.FileMode) error 
+        //func WriteFile(filename string, data []byte, perm os.FileMode) error
 		if err := ioutil.WriteFile(filename, data , 0644); err != nil { // writes to file and checks for returned error
 			log.Println("Error: Failed to backup")
 			return err
@@ -80,7 +80,7 @@ func cost(Ch_Buttons chan elevio.ButtonEvent) int {
             cost += 2
             elevio.SetButtonLamp(BT_HallDown, floor, false)
             elevio.SetButtonLamp(BT_HallUp, floor, false)
-            elevio.SetButtonLamp(BT_Cab, false) 
+            elevio.SetButtonLamp(BT_Cab, false)
         }
         dir = chooseDirection(floor, dir)
         floor, dir = incrementFloor(floor, dir)
@@ -88,7 +88,7 @@ func cost(Ch_Buttons chan elevio.ButtonEvent) int {
     }
 
     return cont
-    
+
 }
 
 func incrementFloor(floor int, dir int) (int, int) {
@@ -123,7 +123,7 @@ func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, e
     var queue
 
     if _, err := os.State(filename); err == nil {
-        data, err := ioutil.ReadFile(filename) 
+        data, err := ioutil.ReadFile(filename)
         if err != nil{
         log.Println("Error: Failed to read from backup")
             return err
@@ -143,21 +143,21 @@ func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, e
 type Elevator struct{
     floor int
     dirn dirn
-    requests[NumFloors][NumButtonsTypes] int 
+    requests[NumFloors][NumButtonsTypes] int
     behaviour ElevatorBehavior
 }
 
 //need to be fixed, ASAP.
-func ListenToHeartbeat(Ch_Heartbeat chan fsm.Heartbeat) { 
-    
+func ListenToHeartbeat(Ch_Heartbeat chan fsm.Heartbeat) {
+
     for{
         select{
-            case heartbeat := <- Ch_Heartbeat 
+            case heartbeat := <- Ch_Heartbeat
 
             if heartbeat.ID == 1 {
                 var local1 Queue
             }
-    
+
             else if heartbeat.ID == 2 {
                 var local2 Queue
             }
@@ -181,9 +181,9 @@ var local queue
 //after orders have gone throw the cost function
 var execute queue
 
-//gets the input parameters from the CH-    Orders-channele, or something similare 
-func AddLocalOrder(floor int, button int){ 
-    local[floor][button] = 1; 
+//gets the input parameters from the CH-    Orders-channele, or something similare
+func AddLocalOrder(floor int, button int){
+    local[floor][button] = 1;
 }
 
 func AddExecuteOrder(floor int, button int,) {
@@ -217,4 +217,3 @@ func RemoveOrders(floor int) {
         exectue.setOrder(floor, b, 0)
     }
 }
-
