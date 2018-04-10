@@ -23,6 +23,5 @@ func main(){
 
     go Fsm.Fsm(ch_orders, ch_floors, ch_doorTimeout) 
 
-
     select{}
 }

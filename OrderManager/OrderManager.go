@@ -54,14 +54,22 @@ func saveToDisk(filname string) error{
 		return nil
 }
 
+type Elevator struct {
+
+    MY_ID string
+    Position int
+    Direction int
+
+}
+
 //the cost for a single elevator
-func cost(Ch_Buttons chan elevio.ButtonEvent) int {
+func cost(Ch_Buttons chan elevio.ButtonEvent, packet chan Elevator) int {
 
     var dir //new
 
     cost := 0
-    floor := Position
-    dir := fsm.Heartbeat.Dir //from FSM
+    floor := Elevator.Position
+    dir :=  Elevator.Direction
     targetfloor := elevio.ButtonEvent.Floor
 
     if floor == -1 { //between floors
@@ -112,11 +120,6 @@ func incrementFloor(floor int, dir int) (int, int) {
     return floor, dir
 }
 
-func bestElevator(idk){
-
-	//Sammenligner cost-verdie + heisID
-
-}
 
 func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, error)
 
@@ -147,29 +150,6 @@ type Elevator struct{
     behaviour ElevatorBehavior
 }
 
-//need to be fixed, ASAP.
-func ListenToHeartbeat(Ch_Heartbeat chan fsm.Heartbeat) { 
-    
-    for{
-        select{
-            case heartbeat := <- Ch_Heartbeat 
-
-            if heartbeat.ID == 1 {
-                var local1 Queue
-            }
-    
-            else if heartbeat.ID == 2 {
-                var local2 Queue
-            }
-
-            else if heartbeat.ID == 3 {
-                var local3 Queue
-            }
-
-        }
-    }
-}
-
 type queue struct{
     matrix [NumFloors][NumButtonsTypes]bool
 }
@@ -197,13 +177,10 @@ func setOrder(floor int, button int){
     matrix[floor][button] = 1
 }
 
-
 //if elevator dead, reassign all orders to the network
 func ReassignOrders(floor int, button int) {}
 
 //--------------------------------------------------------
-
-
 
 func RemoveExecuteOrders(floor int){
     for b := 0; b < NumButtonsTypes; b++ {
