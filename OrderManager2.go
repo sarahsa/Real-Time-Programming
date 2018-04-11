@@ -119,6 +119,7 @@ func incrementFloor(floor int, dir int) (int, int) {
 }
 
 
+
 func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, error)
 
     var queue

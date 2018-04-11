@@ -2,6 +2,7 @@ package OrderManager
 
 import (
       "../elevio"
+      def "config"
       //"log"
       //"io/ioutil"
       //"os"
@@ -13,7 +14,100 @@ const NumFloors = 4
 const NumButtonsTypes = 3
 var ExecuteOrders[4][3] bool
 
+func executeOrder(buttonPress elevio.ButtonEvent, e Elevator) {
 
+    cost:= cost(buttonPress, e)
+
+    if (ExecuteOrders[buttonPress.Floor][buttonPress.Button] == false){
+        ExecuteOrders[buttonPress.Floor][buttonPress.Button] = true
+
+}
+
+//the cost for a single elevator
+func cost(buttonPress elevio.ButtonEvent, e Elevator) int {
+
+    cost := 0
+    floor := e.floor
+    dir :=  e.dir
+    targetfloor := buttonPress.Floor
+
+    if floor == -1 { //between floors
+        cost++
+    }
+
+    else if Fsm.State != elevio.MD_Stop {
+        cost += 2
+    }
+
+    floor, dir = incrementFloor(floor, dir)
+
+    //simulates the elevator cost until it reaches the target floorm max 10 simulations
+    for n := 0; !(floor == targetfloor && CheckOrdersAtFloor(floor)) && n < 10; n++ {
+        if  Fsm.CheckOrdersAtFloor(floor){
+            cost += 2
+            elevio.SetButtonLamp(BT_HallDown, floor, false)
+            elevio.SetButtonLamp(BT_HallUp, floor, false)
+            elevio.SetButtonLamp(BT_Cab, false)
+            elevio.SetDoorOpenLamp(true)
+        }
+        dir = chooseDirection(floor, dir)
+        floor, dir = incrementFloor(floor, dir)
+        cost += 2
+    }
+
+    return cost
+}
+
+func requests_chooseDirection(e Elevator) MotorDirection {
+    switch e.dir {
+    case elevio.MD_Up:
+        if IsOrderAbove(e.floor) {
+            return elevio.MD_Up
+        } else if IsOrderBelow(e.floor) {
+            return elevio.MD_Down
+        }
+        return elevio.MD_Stop
+    case elevio.MD_Down:
+        if IsOrderBelow(e.floor) {
+            return elevio.MD_Down
+        } else if IsOrderAbove(e.floor) {
+            return elevio.MD_Up
+        }
+        return elevio.MD_Stop
+    case elevio.MD_Stop:
+        if IsOrderAbove(e.floor) {
+            return elevio.MD_Up
+        } else if IsOrderBelow(e.floor){
+            return elevio.MD_Down:
+        }
+        return elevio.MD_Stop
+    default:
+        return elevio.MD_Stop
+    }
+}
+
+func incrementFloor(floor int, dir int) (int, int) {
+
+    switch dir {
+    case elevio.MD_Down:
+            floor--
+        case elevio.MD_Up:
+            floor++
+    }
+
+    if floor <= 0 && dir == elevoi.MD_Down{
+        dir = elevio.MD_Up
+        floor = 0
+    }
+
+    if floor >= NumFloors - 1 && dir == elevoi.MD_Up{
+        dir = elevio.MD_Down
+        floor = NumFloors - 1
+    }
+    return floor, dir
+}
+
+/*
 func OrderManager()  {
 
 }
@@ -90,11 +184,53 @@ func IsElevatorAlive()  bool {
 
 //-------------------------------------------------------------------------------------
 
-type Elevator struct {
-    floor int
-    dirn Dirn
-    request[N_FLOORS][N_BUTTONS]
-    behaviour ElevatorBehavior
+
+
+func requests_shouldStop(e Elevator) bool {
+    switch e.dir {
+    case MD_Down:
+        return e.requests[e.floor][BT_HallUp] || e.requests[e.floor][BT_Cab] || !IsOrderBelow(e.floor)
+    case MD_Up:
+        return e.requests[e.floor][BT_HallUp] || e.requests[e.floor][BT_Cab] || !IsOrderAbove(e.floor)
+    case MD_Stop:
+    default:
+        return true
+    }
+}
+
+func request_clearAtCurrentFloor(e Elevator) Elevator {
+    switch e.config.onClearedRequestVariant {
+    case CV_ALL:
+        for btn Button := 0; btn < N_BUTTONS; btn++  {
+            e.requests[e.floor][btn] = 0
+        }
+        break
+    case CV_InDirn:
+        e.requests[e.floor][B_Cab] = 0
+        switch e.dirn {
+        case D_Up:
+            e.requests[e.floor][B_HallUp] = 0
+            if !requests_above(e) {
+                e.requests[e.floor][B_HallDown] = 0
+            }
+            break
+        case D_Down:
+            e.requests[e.floor][B_HallDown] = 0
+            if (!requests_below(e)) {
+                e.requests[e.floor][B_HallUp] = 0
+            }
+            break
+        case D_Stop:
+        default:
+            e.requests[e.floor][B_HallUp] = 0
+            e.requests[e.floor][B_HallDown] = 0
+            break
+        }
+        break
+    default:
+        break
+    }
+    return e
 }
 
 func request_clearAtCurrentFloor(e_old Elevator, onClearedRequest(b Button, floor int)) Elevator {
@@ -141,3 +277,4 @@ func timeToIdle(e Elevator) int{
         duration += TRAVEL_TIME
     }
 }
+*/
