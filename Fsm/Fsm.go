@@ -63,6 +63,15 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_floor chan int, Ch_DoorTi
 			fmt.Println("Dir: Stop")
 		}
 
+		switch(lastDirection){
+		case elevio.MD_Up:
+			fmt.Println("LastDir: Up")
+		case elevio.MD_Down:
+			fmt.Println("LastDir: Down")
+		case elevio.MD_Stop:
+			fmt.Println("LastDir: Stop")
+		}
+
 		select{
 		case newOrder := <- Ch_assignedOrders:
 			switch(state){
@@ -102,6 +111,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_floor chan int, Ch_DoorTi
 
 			case ES_MOVING:
 				if reachedFloor == 3 || reachedFloor == 0{
+					fmt.Println("Changing direction due to 0 or 3")
 					changeDirection()
 				}
 				if (CheckOrdersAtFloor(reachedFloor)){
@@ -136,6 +146,9 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_floor chan int, Ch_DoorTi
 					if (CheckUpcomingFloors(lastFloor)){
 					fmt.Println("dir = ", dir)
 					elevio.SetMotorDirection(dir)
+					}else{
+						dir = lastDirection
+						elevio.SetMotorDirection(dir)
 					}
 				}
 			} else{

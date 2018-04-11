@@ -48,9 +48,7 @@ func main() {
 				ButtonPacketTrans <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}
 			}
 
-			if orderAccepted {
-				fmt.Println(ButtonPress)
-			}
+		
 
 
 		case recvPacket := <-ButtonPacketRecv:
