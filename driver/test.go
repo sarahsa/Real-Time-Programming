@@ -2,7 +2,8 @@ package main
 
 
 import(
-	"../network/network/bcast"
+	//"../network/network/bcast"
+	"../network/network/"
 	"fmt"
 	"flag"
 	"../elevio"
@@ -17,12 +18,23 @@ type ButtonPressPacket struct{
 }
 
 
+
 func main() {
-	idPtr := flag.String("id", "no id", "elevatro id")
-	hwPortPtr := flag.String("hwport", "15658", "select w port hw runs on")
-	flag.Parse()
-	myID := *idPtr
-	hwPort := *hwPortPtr
+	//Fungerte ved aa fa port og id fra terminalen.
+	//idPtr := flag.String("id", "no id", "elevatro id")
+	//hwPortPtr := flag.String("hwport", "15658", "select w port hw runs on")
+	//flag.Parse()
+	//myID := *idPtr
+	//hwPort := *hwPortPtr
+
+	localIP, err := localip.localIP()
+	if err != nil{
+		fmt.Println(err)
+		fmt.Println("Diconnected")
+		os.Exit(0)
+	}
+	id := fmt.Sprintf("peer-%s", localIP)
+
 
 	elevio.Init(":"+hwPort, 4)
 
@@ -31,6 +43,7 @@ func main() {
 
 	ButtonPress := make(chan elevio.ButtonEvent)
 
+
 	go bcast.Transmitter(23232, ButtonPacketTrans)
 	go bcast.Receiver(23232, ButtonPacketRecv)
 
@@ -38,17 +51,20 @@ func main() {
 
 	for{
 		select{
+
+
 		case buttonPress := <-ButtonPress:
 			fmt.Println("Button press at " + myID)
 			fmt.Println(buttonPress)
 
-			orderAccepted, changeMade := OrderManager.AddOrder(buttonPress)
+			changeMade := OrderManager.executeOrder(buttonPress)
 			fmt.Println("Change Made: ", changeMade)
+
 			if changeMade {
 				ButtonPacketTrans <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}
 			}
 
-		
+
 
 
 		case recvPacket := <-ButtonPacketRecv:

@@ -18,12 +18,12 @@ const (
 )
 
 type Elevator struct {
+    ID int
     floor int
-    MotorDirection dir
     requests[N_FLOORS][N_BUTTONS] int
     state int
-    ID int
-    request ButtonEvent
+    MotorDirection elevoi.MotorDirection
+    //request ButtonEvent
 }
 
 type Queue struct{

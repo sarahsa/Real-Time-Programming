@@ -10,20 +10,62 @@ import (
       //"../Fsm"
 )
 
-const NumFloors = 4
-const NumButtonsTypes = 3
-var ExecuteOrders[4][3] bool
+elevators := make(map[string]def.Elevator)
 
-func executeOrder(buttonPress elevio.ButtonEvent, e Elevator) {
+var ExecuteOrders[def.N_FLOORS][def.N_BUTTONS] bool
 
-    cost:= cost(buttonPress, e)
+func executeOrder(buttonPress elevio.ButtonEvent) bool {
 
-    if (ExecuteOrders[buttonPress.Floor][buttonPress.Button] == false){
-        ExecuteOrders[buttonPress.Floor][buttonPress.Button] = true
+    cost := cost()
+
+    if (cost == true){
+        addOrder(buttonPress)
+        return true
+    }else{
+      return false
+    }
+}
+
+func addElevator(IP string)  {
+  elevator1[IP] = Elevator{
+    
+  }
 
 }
 
-//the cost for a single elevator
+//lytter fra chan i main og oppdaterer etasje
+func FloorUpdate(floor chan int)  {
+
+}
+
+//lytter fra chan i main og oppdaterer retning
+func DirectionUpdate(direction chan elevio.MotorDirection){
+
+}
+
+
+func IsElevatorAlive()  bool {
+
+}
+
+func testCost() bool {
+  return true
+}
+
+func AddOrder(buttonPress elevio.ButtonEvent) bool {
+
+    //floor := <- bt.Floor
+
+    if (ExecuteOrders[buttonPress.Floor][buttonPress.Button] == false){
+        ExecuteOrders[buttonPress.Floor][buttonPress.Button] = true
+        return true
+    }
+
+    return false
+}
+
+
+/*/the cost for a single elevator
 func cost(buttonPress elevio.ButtonEvent, e Elevator) int {
 
     cost := 0
@@ -57,6 +99,8 @@ func cost(buttonPress elevio.ButtonEvent, e Elevator) int {
 
     return cost
 }
+
+
 
 func requests_chooseDirection(e Elevator) MotorDirection {
     switch e.dir {
@@ -150,37 +194,9 @@ func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, e
 
 }
 
-func AddOrder(buttonPress elevio.ButtonEvent)  (bool, bool) {
-
-    //floor := <- bt.Floor
-
-    if (ExecuteOrders[buttonPress.Floor][buttonPress.Button] == false){
-        ExecuteOrders[buttonPress.Floor][buttonPress.Button] = true
-        return true, true
-    }
-
-    return false, false
-}
 
 
-//lytter fra chan i main og oppdaterer etasje
-func FloorUpdate(floor chan int)  {
 
-}
-
-//lytter fra chan i main og oppdaterer retning
-func DirectionUpdate(direction chan elevio.MotorDirection){
-
-}
-
-//??
-func LampUpdate()  {
-
-}
-
-func IsElevatorAlive()  bool {
-
-}
 
 //-------------------------------------------------------------------------------------
 
