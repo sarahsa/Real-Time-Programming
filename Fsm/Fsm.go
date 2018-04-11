@@ -177,6 +177,7 @@ func Init(){
 		dir = elevio.MD_Up
 	}
 
+
 }
 
 //returner true dersom ordren er lagt til, false ellers
@@ -333,3 +334,12 @@ func DoorTimeout()  {
 		}
 	}
 }
+/*
+func UpdateElevator(elevator chan config.Elevator)  {
+	Ch_floor := make(chan int)
+	go elevio.PollFloorSensor(Ch_floor)
+	elevator.floor = <- Ch_floor
+	elevator.state = state
+	elevator.direction = dir
+	elevator.requests = ExecuteOrders
+}*/

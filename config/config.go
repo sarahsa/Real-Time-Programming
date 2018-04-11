@@ -18,16 +18,16 @@ const (
 )
 
 type Elevator struct {
-    ID int
+    //ID string
     floor int
-    requests[N_FLOORS][N_BUTTONS] int
     state int
-    MotorDirection elevoi.MotorDirection
+    direction elevio.MotorDirection
+    requests[N_FLOORS][N_BUTTONS] int
     //request ButtonEvent
 }
 
 type Queue struct{
-    matrix [NumButtonsTypes][NumFloors]bool
+    matrix [N_BUTTONS][N_FLOORS]bool
 }
 
 var executeOrders Queue

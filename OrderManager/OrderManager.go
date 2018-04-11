@@ -2,7 +2,7 @@ package OrderManager
 
 import (
       "../elevio"
-      def "config"
+       "../config"
       //"log"
       //"io/ioutil"
       //"os"
@@ -10,51 +10,38 @@ import (
       //"../Fsm"
 )
 
-elevators := make(map[string]def.Elevator)
+var elevators = make(map[string]config.Elevator)
 
-var ExecuteOrders[def.N_FLOORS][def.N_BUTTONS] bool
+var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool
 
-func executeOrder(buttonPress elevio.ButtonEvent) bool {
+func executeOrder(buttonPress elevio.ButtonEvent, ) bool {
 
-    cost := cost()
+
+    cost := testCost()
 
     if (cost == true){
-        addOrder(buttonPress)
+        AddOrder(buttonPress)
         return true
     }else{
       return false
     }
 }
 
-func addElevator(IP string)  {
-  elevator1[IP] = Elevator{
-    
+func addElevator(ip string, elevator config.Elevator)  {
+  _, ok := elevators[ip]
+  if (ok == false){
+      elevators[ip] = elevator
   }
-
-}
-
-//lytter fra chan i main og oppdaterer etasje
-func FloorUpdate(floor chan int)  {
-
-}
-
-//lytter fra chan i main og oppdaterer retning
-func DirectionUpdate(direction chan elevio.MotorDirection){
-
 }
 
 
-func IsElevatorAlive()  bool {
-
-}
 
 func testCost() bool {
   return true
 }
 
+//maa sammenligne kostene og legge til ordren dersom kosten returnerer true
 func AddOrder(buttonPress elevio.ButtonEvent) bool {
-
-    //floor := <- bt.Floor
 
     if (ExecuteOrders[buttonPress.Floor][buttonPress.Button] == false){
         ExecuteOrders[buttonPress.Floor][buttonPress.Button] = true
@@ -63,6 +50,7 @@ func AddOrder(buttonPress elevio.ButtonEvent) bool {
 
     return false
 }
+
 
 
 /*/the cost for a single elevator
@@ -125,7 +113,7 @@ func requests_chooseDirection(e Elevator) MotorDirection {
             return elevio.MD_Down:
         }
         return elevio.MD_Stop
-    default:
+    configault:
         return elevio.MD_Stop
     }
 }
@@ -209,7 +197,7 @@ func requests_shouldStop(e Elevator) bool {
     case MD_Up:
         return e.requests[e.floor][BT_HallUp] || e.requests[e.floor][BT_Cab] || !IsOrderAbove(e.floor)
     case MD_Stop:
-    default:
+    configault:
         return true
     }
 }
@@ -237,13 +225,13 @@ func request_clearAtCurrentFloor(e Elevator) Elevator {
             }
             break
         case D_Stop:
-        default:
+        configault:
             e.requests[e.floor][B_HallUp] = 0
             e.requests[e.floor][B_HallDown] = 0
             break
         }
         break
-    default:
+    configault:
         break
     }
     return e
