@@ -26,6 +26,12 @@ type Elevator struct {
     //request ButtonEvent
 }
 
+type ButtonPressPacket struct{
+	Sender string
+	Floor int
+	Button elevio.ButtonType
+}
+
 type Queue struct{
     matrix [N_BUTTONS][N_FLOORS]bool
 }

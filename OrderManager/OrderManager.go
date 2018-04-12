@@ -2,7 +2,12 @@ package OrderManager
 
 import (
       "../elevio"
-       "../config"
+      "../config"
+      "fmt"
+      //"flag"
+      "../network/network/peers"
+      "../network/network/bcast"
+     // "../network/network/localip"
       //"log"
       //"io/ioutil"
       //"os"
@@ -15,10 +20,118 @@ import (
 // get
 var elevators = make(map[string]config.Elevator)
 
-var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool
+var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool  //TEST!!
 
-func executeOrder(buttonPress elevio.ButtonEvent, ) bool {
+func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketRecv chan config.ButtonPressPacket,
+     assignedOrders chan elevio.ButtonEvent, doorTimeout chan bool, ElevatorTrans chan config.Elevator,
+     ElevatorRecv chan config.Elevator, ButtonPress chan elevio.ButtonEvent, myID string, hwPort string)  {
 
+                                    /*var myID string
+                                 	flag.StringVar(&myID, "id", "", "id of this peer")
+                                 	hwPortPtr := flag.String("hwport", "15657", "select w port hw runs on")
+                                 	flag.Parse()
+                                 	hwPort := *hwPortPtr
+
+                                	if myID == ""{
+                                		localIP, err := localip.LocalIP()
+                                		if err != nil{
+                                			fmt.Println(err)
+                                			fmt.Println("Diconnected")
+                                			localIP = "DISCONNECTED"
+                                		}
+                                		myID = fmt.Sprintf("peer-%s", localIP)
+                                	}
+*/
+                                    //elevio.Init(":"+hwPort, 4) //4 = number of floors
+
+
+                                    peerUpdateCh := make(chan peers.PeerUpdate)
+                                	peerTxEnable := make(chan bool)
+
+                                	go peers.Transmitter(15647, myID, peerTxEnable) //15647 , 15670
+                                	go peers.Receiver(15647, peerUpdateCh) //15647
+
+                                	go bcast.Transmitter(23232, ButtonPacketTrans, ElevatorTrans)
+                                	go bcast.Receiver(23232, ButtonPacketRecv, ElevatorRecv)
+
+                                	go elevio.PollButtons(ButtonPress)
+
+
+                                    //go Fsm.Fsm(assignedOrders, floors, doorTimeout)
+
+                                    for{
+                                			select{
+                                			case p := <-peerUpdateCh:
+                                				fmt.Printf("Peer update:\n")
+                                				fmt.Printf("  Peers:    %q\n", p.Peers)
+                                				fmt.Printf("  New:      %q\n", p.New)
+                                				fmt.Printf("  Lost:     %q\n", p.Lost)
+
+
+                                			case buttonPress := <-ButtonPress:
+                                				fmt.Println("Button press at " + myID)
+                                				fmt.Println(buttonPress)
+
+                                				ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
+
+                                			case recvPacket := <-ButtonPacketRecv:
+                                			assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
+
+                                			fmt.Println("Received from " + recvPacket.Sender)
+                                			fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
+
+                                		}
+
+                                	}
+
+    /*for{
+            select{
+            case p := <-peerUpdateCh:
+                fmt.Printf("Peer update:\n")
+                fmt.Printf("  Peers:    %q\n", p.Peers)
+                fmt.Printf("  New:      %q\n", p.New)
+                fmt.Printf("  Lost:     %q\n", p.Lost)
+
+            case buttonPress := <-ButtonPress:
+                fmt.Println("Button press at " + myID)
+                fmt.Println(buttonPress)		myID = fmt.Sprintf("peer-%s", localIP)
+
+                //floor <- Ch_floor
+                //OrderManager.executeOrder(buttonPress)
+                //fmt.Println("Change Made: ", changeMade)
+
+                ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
+                //ElevatorTrans <- Ch_elevator
+
+            case recvPacket := <-ButtonPacketRecv:
+                assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
+
+                fmt.Println("Received from " + recvPacket.Sender)
+                fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
+
+            	orderAccepted, changeMade := OrderManager.AddOrder(buttonPress)
+                fmt.Println("Change Made: ", changeMade)
+                if changeMade {
+                    ButtonPacketRecv <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}
+                }
+
+            case recvElevPacket := <- ElevatorRecv:
+
+                for k, v := range OrderManager.elevators {
+                    if k != recvPacket.ID {
+                        elevators[recvPacket.ID] = recvPacket
+                    }
+                }
+
+            }
+
+    }*/
+
+}
+
+//-----------------------------------------------------------------------------------------------------
+
+/*func executeOrder(buttonPress elevio.ButtonEvent, ) bool {
 
     cost := testCost()
 
@@ -37,12 +150,6 @@ func addElevator(ip string, elevator config.Elevator)  {
   }
 }
 
-
-
-func testCost() bool {
-  return true
-}
-
 //maa sammenligne kostene og legge til ordren dersom kosten returnerer true
 func AddOrder(buttonPress elevio.ButtonEvent) bool {
 
@@ -52,11 +159,15 @@ func AddOrder(buttonPress elevio.ButtonEvent) bool {
     }
 
     return false
+}*/
+
+//-----------------------------------------------------------------------------------------------------
+
+/*
+func testCost() bool {
+  return true
 }
-
-
-
-/*/the cost for a single elevator
+//the cost for a single elevator
 func cost(buttonPress elevio.ButtonEvent, e Elevator) int {
 
     cost := 0
@@ -185,13 +296,7 @@ func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, e
 
 }
 
-
-
-
-
 //-------------------------------------------------------------------------------------
-
-
 
 func requests_shouldStop(e Elevator) bool {
     switch e.dir {

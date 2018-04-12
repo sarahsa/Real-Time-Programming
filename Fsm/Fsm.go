@@ -33,11 +33,12 @@ var dir elevio.MotorDirection
 var lastDirection elevio.MotorDirection //Kan hende denne er unødvendig
 var state int
 var lastFloor int
+floors := make(chan int)
 
 
-
-func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_floor chan int, Ch_DoorTimeout chan bool) {
+func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 	Init()
+	go elevio.PollFloorSensor(floors)
 	doortimer := time.NewTimer(3*time.Second)
 	doortimer.Stop()
 
@@ -163,6 +164,7 @@ func Init(){
 
 	fmt.Println("Initializing...")
 	elevio.SetDoorOpenLamp(false)
+	fmt.Println("doorclosed")
 	state = ES_INIT
 
 	for f := 0; f < 4; f++ {
