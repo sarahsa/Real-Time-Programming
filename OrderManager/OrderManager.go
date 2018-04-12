@@ -58,11 +58,19 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
     		case buttonPress := <-ButtonPress:
     			fmt.Println("Button press at " + myID)
     			fmt.Println(buttonPress)
+                if buttonPress.Button == elevio.BT_Cab  {   //Differentiating between cab and hall orderss
+                    assignedOrders <- buttonPress
+                    fmt.Println("CabOrder added")
+                    
+                }else{
+                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
 
-    			ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
+                }
+
+    			
 
     		case recvPacket := <-ButtonPacketRecv:
-                assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
+                //assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
 
         		fmt.Println("Received from " + recvPacket.Sender)
         		fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
