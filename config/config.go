@@ -18,11 +18,11 @@ const (
 )
 
 type Elevator struct {
-    //ID string
+    ID string
     floor int
     state int
     direction elevio.MotorDirection
-    requests[N_FLOORS][N_BUTTONS] int
+    requests[N_FLOORS][N_BUTTONS] bool
     //request ButtonEvent
 }
 

@@ -3,7 +3,7 @@ package main
 
 import(
 	"../network/network/bcast"
-	//"../network/network/"
+	"../network/network/peers"
 	"fmt"
 	"flag"
 	"../elevio"
@@ -67,7 +67,11 @@ func main() {
 	//Ch_direction := make(chan elevio.MotorDirection)
 
 	//go Fsm.UpdateElevator(Ch_elvator)
+	peerUpdateCh := make(chan peers.PeerUpdate)
+	peerTxEnable := make(chan bool)
 
+	go peers.Transmitter(15647, myID, peerTxEnable)
+	go peers.Receiver(15647, peerUpdateCh)
 
 	go bcast.Transmitter(23232, ButtonPacketTrans, ElevatorTrans)
 	go bcast.Receiver(23232, ButtonPacketRecv, ElevatorRecv)
@@ -81,6 +85,12 @@ func main() {
 
 	for{
 		select{
+		case p := <-peerUpdateCh:
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers:    %q\n", p.Peers)
+			fmt.Printf("  New:      %q\n", p.New)
+			fmt.Printf("  Lost:     %q\n", p.Lost)
+			
 
 
 		case buttonPress := <-ButtonPress:
@@ -108,9 +118,18 @@ func main() {
 			if changeMade {
 				ButtonPacketRecv <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}
 			}*/
+/*
+		case recvElevPacket := <- ElevatorRecv:
 
+			for k, v := range OrderManager.elevators {
+				if k != recvPacket.ID {
+					elevators[recvPacket.ID] = recvPacket
+				}
+			}*/
 
 		}
+
 	}
+
 
 }
