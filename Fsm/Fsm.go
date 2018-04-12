@@ -4,7 +4,7 @@ import(
 
 	"../elevio"
 	"fmt"
- 	//"../config"
+ 	"../config"
  	"time"
  	//"../Map"
  )
@@ -17,23 +17,10 @@ const (
 	ES_DOOROPEN = 3
 	ES_STUCK = 4 //stuck mellom to etasjer -- Hvordan vet vi den er stuck?
 )
-/*
-*****Mulig struct, i stedet for globale variabler*****
-type Elevator struct{
-	assignedOrders[4][3] bool
-	dir elevio.MotorDirection
-	state int
-	floor int
-}
-*/
 
-var ExecuteOrders [4][3] bool
-
-var dir elevio.MotorDirection
+var elevator config.Elevator
 var lastDirection elevio.MotorDirection //Kan hende denne er unødvendig
-var state int
-var lastFloor int
-floors := make(chan int)
+var floors = make(chan int)
 
 
 func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
@@ -44,9 +31,9 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 
 	for {
 		//Only for debugging purposes
-		switch(state){
+		switch(elevator.State){
 		case ES_INIT:
-			fmt.Println("State: Init")
+			fmt.Println("elevator.elevator.State: Init")
 		case ES_IDLE:
 			fmt.Println("State: Idle")
 		case ES_MOVING:
@@ -55,7 +42,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 			fmt.Println("State: DoorOpen")
 		}
 
-		switch(dir){
+		switch(elevator.Direction){
 		case elevio.MD_Up:
 			fmt.Println("Dir: Up")
 		case elevio.MD_Down:
@@ -75,21 +62,21 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 
 		select{
 		case newOrder := <- Ch_assignedOrders:
-			switch(state){
+			switch(elevator.State){
 				case ES_IDLE:
-					if newOrder.Floor == lastFloor{
-						ClearOrdersAtCurrentFloor(lastFloor)
-						state = ES_DOOROPEN
+					if newOrder.Floor == elevator.Floor{
+						ClearOrdersAtCurrentFloor(elevator.Floor)
+						elevator.State = ES_DOOROPEN
 						elevio.SetDoorOpenLamp(true)
 						doortimer.Reset(3 * time.Second)
 					}else{
 						addOrder(newOrder)
-						fmt.Println("Orders: %v", ExecuteOrders)
-						executeOrder(lastFloor, newOrder.Floor)
-						state = ES_MOVING
+						fmt.Println("Orders: %v", elevator.AssignedRequests)
+						executeOrder(elevator.Floor, newOrder.Floor)
+						elevator.State = ES_MOVING
 					}
 				case ES_DOOROPEN:
-					if newOrder.Floor == lastFloor{
+					if newOrder.Floor == elevator.Floor{
 						doortimer.Reset(3 * time.Second)
 					}else{
 						addOrder(newOrder)
@@ -97,18 +84,19 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 
 				default:
 					addOrder(newOrder)
-					fmt.Println("Orders: %v", ExecuteOrders)
+					fmt.Println("Orders: %v", elevator.AssignedRequests)
 			}
 
-		case reachedFloor := <- Ch_floor:
+		case reachedFloor := <- floors:
 			elevio.SetFloorIndicator(reachedFloor)
-			lastFloor = reachedFloor
-			switch(state){
+			elevator.Floor = reachedFloor
+			fmt.Println("floor from reachedFloor: ", elevator.Floor)
+			switch(elevator.State){
 			case ES_INIT:
 				elevio.SetMotorDirection(elevio.MD_Stop)
-				lastDirection = dir
-				dir = elevio.MD_Stop
-				state = ES_IDLE
+				lastDirection = elevator.Direction
+				elevator.Direction = elevio.MD_Stop
+				elevator.State = ES_IDLE
 
 			case ES_MOVING:
 				if reachedFloor == 3 || reachedFloor == 0{
@@ -117,13 +105,13 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 				}
 				if (CheckOrdersAtFloor(reachedFloor)){
 					//Kan lage funksjon av dette:
-					lastDirection = dir
-					dir = elevio.MD_Stop
-					elevio.SetMotorDirection(dir)
-					ClearOrdersAtCurrentFloor(lastFloor)
+					lastDirection = elevator.Direction
+					elevator.Direction = elevio.MD_Stop
+					elevio.SetMotorDirection(elevator.Direction)
+					ClearOrdersAtCurrentFloor(elevator.Floor)
 					elevio.SetDoorOpenLamp(true)
 					doortimer.Reset(3 * time.Second)
-					state = ES_DOOROPEN
+					elevator.State = ES_DOOROPEN
 				}
 
 			default:
@@ -134,26 +122,26 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 			fmt.Println("DoorTimeout")
 			elevio.SetDoorOpenLamp(false)
 			if CheckIfAnyOrders() {
-				dir = lastDirection
-				state = ES_MOVING
+				elevator.Direction = lastDirection
+				elevator.State = ES_MOVING
 				//Koden under her kan forenkles:
-				if CheckUpcomingFloors(lastFloor){
+				if CheckUpcomingFloors(elevator.Floor){
 					fmt.Println("inside doortimer - checkupcomingfloor")
-					dir=lastDirection
-					elevio.SetMotorDirection(dir)
+					elevator.Direction=lastDirection
+					elevio.SetMotorDirection(elevator.Direction)
 				} else{
 					changeDirection()
 					fmt.Println("Inside doortimer - else statement")
-					if (CheckUpcomingFloors(lastFloor)){
-					fmt.Println("dir = ", dir)
-					elevio.SetMotorDirection(dir)
+					if (CheckUpcomingFloors(elevator.Floor)){
+					fmt.Println("dir = ", elevator.Direction)
+					elevio.SetMotorDirection(elevator.Direction)
 					}else{
-						dir = lastDirection
-						elevio.SetMotorDirection(dir)
+						elevator.Direction = lastDirection
+						elevio.SetMotorDirection(elevator.Direction)
 					}
 				}
 			} else{
-				state = ES_IDLE
+				elevator.State = ES_IDLE
 			}
 
 		}
@@ -165,7 +153,7 @@ func Init(){
 	fmt.Println("Initializing...")
 	elevio.SetDoorOpenLamp(false)
 	fmt.Println("doorclosed")
-	state = ES_INIT
+	elevator.State = ES_INIT
 
 	for f := 0; f < 4; f++ {
 		for b := elevio.ButtonType(0); b < 3; b++ {
@@ -176,7 +164,9 @@ func Init(){
 
 	if elevio.GetFloor() == -1{
 		elevio.SetMotorDirection(elevio.MD_Up)
-		dir = elevio.MD_Up
+		elevator.Direction = elevio.MD_Up
+	}else{
+		elevator.Floor = elevio.GetFloor()
 	}
 
 
@@ -185,8 +175,8 @@ func Init(){
 //returner true dersom ordren er lagt til, false ellers
 func addOrder(pressedButton elevio.ButtonEvent) bool{
 	fmt.Println("Er inn i addOrder")
-	if (ExecuteOrders[pressedButton.Floor][pressedButton.Button] == false){
-		ExecuteOrders[pressedButton.Floor][pressedButton.Button] = true
+	if (elevator.AssignedRequests[pressedButton.Floor][pressedButton.Button] == false){
+		elevator.AssignedRequests[pressedButton.Floor][pressedButton.Button] = true
 		elevio.SetButtonLamp(pressedButton.Button, pressedButton.Floor, true)
 		return true
 	}
@@ -196,40 +186,40 @@ func addOrder(pressedButton elevio.ButtonEvent) bool{
 
 func changeDirection(){
 	fmt.Println("Changing direction ")
-	if dir == elevio.MD_Up || lastFloor == 3{
-		dir = elevio.MD_Down
-	} else if dir == elevio.MD_Down || lastFloor == 0{
-		dir = elevio.MD_Up
+	if elevator.Direction == elevio.MD_Up || elevator.Floor == 3{
+		elevator.Direction = elevio.MD_Down
+	} else if elevator.Direction == elevio.MD_Down || elevator.Floor == 0{
+		elevator.Direction = elevio.MD_Up
 	}
 }
 
-func executeOrder(lastFloor int, targetFloor int){
+func executeOrder(floor int, targetFloor int){
 
-	if(lastFloor < targetFloor){
-		dir = elevio.MD_Up
+	if(floor < targetFloor){
+		elevator.Direction = elevio.MD_Up
 
-	} else if (lastFloor > targetFloor) {
-		dir = elevio.MD_Down
+	} else if (floor > targetFloor) {
+		elevator.Direction = elevio.MD_Down
 
-	} else {								//lastFloor == targetFloor
-		lastDirection = dir
-		dir = elevio.MD_Stop
+	} else {								//elevator.Floor == targetFloor
+		lastDirection = elevator.Direction
+		elevator.Direction = elevio.MD_Stop
 		//Fjerne ordre
 		//Slå av lys
-		ClearOrdersAtCurrentFloor(lastFloor)
+		ClearOrdersAtCurrentFloor(floor)
 		//Åpne dør
 		elevio.SetDoorOpenLamp(true)
 		//Start Timer
-		dir = lastDirection
+		elevator.Direction = lastDirection
 
 	}
-	elevio.SetMotorDirection(dir)
+	elevio.SetMotorDirection(elevator.Direction)
 }
 
 func CheckIfAnyOrders() bool{
 	for f := 0; f < 4; f++ {
 		for b := 0; b < 3; b++ {
-			if(ExecuteOrders[f][b] == true){
+			if(elevator.AssignedRequests[f][b] == true){
 				fmt.Println("It has more orders to execute")
 				return true
 			}
@@ -240,15 +230,15 @@ func CheckIfAnyOrders() bool{
 
 
 func CheckOrdersAtFloor(floor int) bool {
-	switch(dir){
+	switch(elevator.Direction){
 	case elevio.MD_Up:
-		return (ExecuteOrders[floor][elevio.BT_HallUp] || ExecuteOrders[floor][elevio.BT_Cab])
+		return (elevator.AssignedRequests[floor][elevio.BT_HallUp] || elevator.AssignedRequests[floor][elevio.BT_Cab])
 
 	case elevio.MD_Down:
-		return (ExecuteOrders[floor][elevio.BT_HallDown] || ExecuteOrders[floor][elevio.BT_Cab])
+		return (elevator.AssignedRequests[floor][elevio.BT_HallDown] || elevator.AssignedRequests[floor][elevio.BT_Cab])
 
 	case elevio.MD_Stop:
-		return (ExecuteOrders[floor][elevio.BT_HallUp] || ExecuteOrders[floor][elevio.BT_HallDown] || ExecuteOrders[floor][elevio.BT_Cab])
+		return (elevator.AssignedRequests[floor][elevio.BT_HallUp] || elevator.AssignedRequests[floor][elevio.BT_HallDown] || elevator.AssignedRequests[floor][elevio.BT_Cab])
 
 	default:
 		fmt.Println("ERROR: direction is stop")
@@ -256,22 +246,22 @@ func CheckOrdersAtFloor(floor int) bool {
 	}
 }
 
-func CheckUpcomingFloors(lastFloor int) bool{
-	switch(dir){
+func CheckUpcomingFloors(floor int) bool{
+	switch(elevator.Direction){
 	case elevio.MD_Up:
-		return IsOrderAbove(lastFloor)
+		return IsOrderAbove(floor)
 	case elevio.MD_Down:
-		return IsOrderBelow(lastFloor)
+		return IsOrderBelow(floor)
 	}
 	return false
 }
 
 
-func IsOrderAbove(lastFloor int) bool {
-	if lastFloor == 3 {
+func IsOrderAbove(floor int) bool {
+	if floor == 3 {
 		return false
 	}
-	for f := lastFloor + 1; f < 4; f++{
+	for f := floor + 1; f < 4; f++{
    		if CheckOrdersAtFloor(f){
    			fmt.Println("It has orders above")
    			return true
@@ -280,11 +270,11 @@ func IsOrderAbove(lastFloor int) bool {
 	return false
 }
 
-func IsOrderBelow(lastFloor int) bool{
-	if(lastFloor == 0){
+func IsOrderBelow(floor int) bool{
+	if(floor == 0){
 		return false
 	}
-	for f := 0; f < lastFloor; f++{
+	for f := 0; f < floor; f++{
 		if CheckOrdersAtFloor(f){
 			fmt.Println("It has orders below")
    			return true
@@ -296,52 +286,53 @@ func IsOrderBelow(lastFloor int) bool{
 func ClearOrdersAtCurrentFloor(floor int) {
 	fmt.Println("Er inne i ClearOrdersAtCurrentFloor")
 
-	ExecuteOrders[floor][elevio.BT_Cab] = false
+	elevator.AssignedRequests[floor][elevio.BT_Cab] = false
 	elevio.SetButtonLamp(elevio.BT_Cab, floor, false)
-	switch dir{
+	switch elevator.Direction{
 	case elevio.MD_Up:
-		ExecuteOrders[floor][elevio.BT_HallUp] = false
+		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
 		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
-		if (!IsOrderAbove(lastFloor)){
-			ExecuteOrders[floor][elevio.BT_HallDown] = false
+		if (!IsOrderAbove(elevator.Floor)){
+			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}
 	case elevio.MD_Down:
-		ExecuteOrders[floor][elevio.BT_HallDown] = false
+		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
-		if (!IsOrderBelow(lastFloor)){
-			ExecuteOrders[floor][elevio.BT_HallDown] = false
+		if (!IsOrderBelow(elevator.Floor)){
+			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}
 	default:
-		ExecuteOrders[floor][elevio.BT_HallUp] = false
+		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
 		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
-		ExecuteOrders[floor][elevio.BT_HallDown] = false
+		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 	}
 }
+
 
 func DoorTimeout()  {
 	fmt.Println("Er inne i DoorTimeout")
 
-	if (state == ES_DOOROPEN){
+	if (elevator.State == ES_DOOROPEN){
 		//direction = ChooseDirection(currentFloor)
 		elevio.SetDoorOpenLamp(false)
-		elevio.SetMotorDirection(dir)
+		elevio.SetMotorDirection(elevator.Direction)
 
-		if (dir == elevio.MD_Stop){
-			state = ES_IDLE
+		if (elevator.Direction == elevio.MD_Stop){
+			elevator.State = ES_IDLE
 		} else {
-			state = ES_MOVING
+			elevator.State = ES_MOVING
 		}
 	}
 }
-/*
-func UpdateElevator(elevator chan config.Elevator)  {
-	Ch_floor := make(chan int)
-	go elevio.PollFloorSensor(Ch_floor)
-	elevator.floor = <- Ch_floor
-	elevator.state = state
-	elevator.direction = dir
-	elevator.requests = ExecuteOrders
-}*/
+
+
+func GetElevatorStatus() config.Elevator {
+	fmt.Println("floor: ",elevator.Floor)
+	fmt.Println("state: ",elevator.State)
+	fmt.Println("dir: ",elevator.Direction)
+
+	return elevator
+}
