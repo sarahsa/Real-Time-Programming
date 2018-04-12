@@ -10,6 +10,9 @@ import (
       //"../Fsm"
 )
 
+// key = string (ID/IP)
+// value = Elevator
+// get
 var elevators = make(map[string]config.Elevator)
 
 var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool
