@@ -90,7 +90,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 		case reachedFloor := <- floors:
 			elevio.SetFloorIndicator(reachedFloor)
 			elevator.Floor = reachedFloor
-			fmt.Println("floor from reachedFloor: ", elevator.Floor)
+			//fmt.Println("floor from reachedFloor: ", elevator.Floor)
 			switch(elevator.State){
 			case ES_INIT:
 				elevio.SetMotorDirection(elevio.MD_Stop)
@@ -103,6 +103,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 					fmt.Println("Changing direction due to 0 or 3")
 					changeDirection()
 				}
+
 				if (CheckOrdersAtFloor(reachedFloor)){
 					//Kan lage funksjon av dette:
 					lastDirection = elevator.Direction
@@ -112,6 +113,17 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 					elevio.SetDoorOpenLamp(true)
 					doortimer.Reset(3 * time.Second)
 					elevator.State = ES_DOOROPEN
+				}else{
+					changeDirection()
+					if CheckOrdersAtFloor(reachedFloor) {
+						lastDirection = elevator.Direction
+						elevator.Direction = elevio.MD_Stop
+						elevio.SetMotorDirection(elevator.Direction)
+						ClearOrdersAtCurrentFloor(elevator.Floor)
+						elevio.SetDoorOpenLamp(true)
+						doortimer.Reset(3 * time.Second)
+						elevator.State = ES_DOOROPEN
+					}
 				}
 
 			default:
