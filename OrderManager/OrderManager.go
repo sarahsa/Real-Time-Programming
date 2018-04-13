@@ -309,13 +309,13 @@ func requests_shouldStop(elev chan config.Elevator) bool {
 }*/
 
 //NEED TO BE FIXED, void delegate(CallType c) onClearedRequest = null
-func request_clearAtCurrentFloor(e_old Elevator, onClearedRequest(b Button, floor int)) Elevator {
+func request_clearAtCurrentFloor(e_old Elevator, onClearedRequest(b ButtonEvent)) Elevator {
     e Elevator := e_old
     for btn Button := 0; btn < N_BUTTONS; btn++ {
         if (e.AssignedRequests[e.Floor][btn]){
             e.AssignedRequests[e.floor][btn] = 0;
             if (onClearedRequest){
-                onClearedRequest(btn, floor)
+                onClearedRequest(b)
             }
         }
     }
