@@ -6,6 +6,7 @@ import(
 	"../network/network/localip"
 	"fmt"
 	"flag"
+	"os"
 	"../elevio"
 	"../OrderManager"
 	"../config"
@@ -38,7 +39,7 @@ func main() {
 			fmt.Println("Diconnected")
 			localIP = "DISCONNECTED"
 		}
-		myID = fmt.Sprintf("peer-%s", localIP)
+		myID = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	}
 
 	//elevio.Init(":"+hwPort, 4) //4 = number of floors

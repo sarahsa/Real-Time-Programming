@@ -22,13 +22,13 @@ TRAVEL_TIME int = 2500
 includeCab bool = false
 
 )
-
+/*
 const ClearRequestType {
     all = iota
     inDirn = iota,
 }
 
-ClearRequestType clearRequestType = ClearRequestType.inDirn;
+ClearRequestType clearRequestType = ClearRequestType.inDirn;*/
 
 var elevators = make(map[string]config.Elevator)
 
@@ -68,7 +68,7 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
     		case buttonPress := <-ButtonPress:
     			fmt.Println("Button press at " + myID)
     			fmt.Println(buttonPress)
-                if buttonPress.Button == elevio.BT_CAB  {   //Differentiating between cab and hall orderss
+                if buttonPress.Button == elevio.BT_Cab  {   //Differentiating between cab and hall orderss
                     assignedOrders <- buttonPress
                     fmt.Println("CabOrder added")
 
@@ -79,9 +79,10 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
 
     		case recvPacket := <-ButtonPacketRecv:
                 //assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
-
         		fmt.Println("Received from " + recvPacket.Sender)
         		fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
+
+
 
 
                 /*orderAccepted, changeMade := OrderManager.AddOrder(buttonPress)
@@ -108,6 +109,92 @@ func addElevator(ip string, elevator config.Elevator)  {
   if (ok == false){
       elevators[ip] = elevator
   }
+}
+
+func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
+    switch elevator.Direction {
+    case elevio.MD_Up:
+        if Fsm.IsOrderAbove(elevator.Floor) {
+            return elevio.MD_Up
+        } else if Fsm.IsOrderBelow(elevator.Floor) {
+            return elevio.MD_Down
+        }
+        return elevio.MD_Stop
+    case elevio.MD_Down:
+        if Fsm.IsOrderBelow(elevator.Floor) {
+            return elevio.MD_Down
+        } else if Fsm.IsOrderAbove(elevator.Floor) {
+            return elevio.MD_Up
+        }
+        return elevio.MD_Stop
+    case elevio.MD_Stop:
+        if Fsm.IsOrderAbove(elevator.Floor) {
+            return elevio.MD_Up
+        } else if Fsm.IsOrderBelow(elevator.Floor){
+            return elevio.MD_Down
+        }
+        return elevio.MD_Stop
+    default:
+        return elevio.MD_Stop
+    }
+}
+
+func requests_shouldStop(elevator config.Elevator) bool {
+    switch elevator.Direction {
+    case elevio.MD_Down:
+        return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallDown] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderBelow(elevator.Floor)
+    case elevio.MD_Up:
+        return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallUp] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderAbove(elevator.Floor)
+    case elevio.MD_Stop:
+        return true
+    default:
+        return true
+    }
+}
+
+func request_clearAtCurrentFloor(e_old config.Elevator) config.Elevator {
+    e := e_old
+    for btn := 0; btn < config.N_BUTTONS; btn++{
+        if (e.AssignedRequests[e.Floor][btn]){
+            e.AssignedRequests[e.Floor][btn] = false;
+            /*if (onClearedRequest){
+                onClearedRequest(b)
+            }*/
+        }
+    }
+    return e
+}
+
+func timeToIdle(elevator config.Elevator) int{
+    duration := 0
+
+    switch elevator.State {
+    case Fsm.ES_IDLE:
+        elevator.Direction = requests_chooseDirection(elevator)
+        if elevator.Direction == elevio.MD_Stop {
+            return duration
+        }
+        break
+    case Fsm.ES_MOVING:
+        duration += TRAVEL_TIME/2
+        elevator.Floor += int (elevator.Direction)
+        break
+    case Fsm.ES_DOOROPEN:
+        duration -= DOOR_OPEN_TIME/2
+    }
+
+    for {
+        if requests_shouldStop(elevator) {
+            elevator = request_clearAtCurrentFloor(elevator) //????
+            duration += DOOR_OPEN_TIME
+            elevator.Direction = requests_chooseDirection(elevator)
+            if elevator.Direction == elevio.MD_Stop {
+                return duration
+            }
+        }
+        elevator.Floor += int(elevator.Direction)
+        duration += TRAVEL_TIME
+    }
 }
 
 //-----------------------------------------------------------------------------------------------------
@@ -233,45 +320,7 @@ func addElevator(ip string, elevator config.Elevator)  {
     return floor, dir
 }*/
 
-func requests_chooseDirection(elev chan config.Elevator) MotorDirection {
-    switch elev.Direction {
-    case elevio.MD_Up:
-        if Fsm.IsOrderAbove(elev.Floor) {
-            return elevio.MD_Up
-        } else if Fsm.IsOrderBelow(elev.Floor) {
-            return elevio.MD_Down
-        }
-        return elevio.MD_Stop
-    case elevio.MD_Down:
-        if Fsm.IsOrderBelow(elev.Floor) {
-            return elevio.MD_Down
-        } else if Fsm.IsOrderAbove(elev.Floor) {
-            return elevio.MD_Up
-        }
-        return elevio.MD_Stop
-    case elevio.MD_Stop:
-        if Fsm.IsOrderAbove(elev.Floor) {
-            return elevio.MD_Up
-        } else if Fsm.IsOrderBelow(elev.Floor){
-            return elevio.MD_Down:
-        }
-        return elevio.MD_Stop
-    configault:
-        return elevio.MD_Stop
-    }
-}
 
-func requests_shouldStop(elev chan config.Elevator) bool {
-    switch elev.Direction {
-    case elevio.MD_Down:
-        return elev.AssignedRequests[elev.Floor][elevio.BT_HallDown] || elev.AssignedRequests[elev.Floor][elevio.BT_CAB] || !Fsm.IsOrderBelow(elev.Floor)
-    case elevio.MD_Up:
-        return elev.AssignedRequests[elev.Floor][elevio.BT_HallUp] || elev.AssignedRequests[elev.Floor][elevio.BT_CAB] || !Fsm.IsOrderAbove(elev.Floor)
-    case elevio.MD_Stop:
-    configault:
-        return true
-    }
-}
 
 /*func request_clearAtCurrentFloor(elev chan config.Elevator) Elevator {
     switch elev.config.onClearedRequestVariant {
@@ -309,47 +358,4 @@ func requests_shouldStop(elev chan config.Elevator) bool {
 }*/
 
 //NEED TO BE FIXED, void delegate(CallType c) onClearedRequest = null
-func request_clearAtCurrentFloor(e_old Elevator, onClearedRequest(b ButtonEvent)) Elevator {
-    e Elevator := e_old
-    for btn Button := 0; btn < N_BUTTONS; btn++ {
-        if (e.AssignedRequests[e.Floor][btn]){
-            e.AssignedRequests[e.floor][btn] = 0;
-            if (onClearedRequest){
-                onClearedRequest(b)
-            }
-        }
-    }
-    return e
-}
 
-func timeToIdle(elev chan config.Elevator) int{
-    duration int = 0
-
-    switch elev.State {
-    case ES_IDLE:
-        elev.Direction = requests_chooseDirection(elev)
-        if elev.Direction == elevio.MD_Stop {
-            return duration
-        }
-        break
-    case ES_MOVING:
-        duration += TRAVEL_TIME/2
-        elev.Floor += elev.Direction
-        break
-    case ES_DOOROPEN:
-        duration -= DOOR_OPEN_TIME/2
-    }
-
-    for {
-        if requests_shouldStop(elev) {
-            elev = request_clearAtCurrentFloor(elev, nil) //????
-            duration += DOOR_OPEN_TIME
-            elev.Direction = requests_chooseDirection(elev)
-            if elev.Direction == elevio.MD_Stop {
-                return duration
-            }
-        }
-        elev.Floor += elev.Direction
-        duration += TRAVEL_TIME
-    }
-}

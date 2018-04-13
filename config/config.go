@@ -30,6 +30,7 @@ type ButtonPressPacket struct{
 	Sender string
 	Floor int
 	Button elevio.ButtonType
+    StatusOrder bool
 }
 
 type Queue struct{
