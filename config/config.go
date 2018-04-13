@@ -30,7 +30,7 @@ type ButtonPressPacket struct{
 	Sender string
 	Floor int
 	Button elevio.ButtonType
-  StatusOrder Status
+  //StatusOrder Status
 }
 
 type Status int

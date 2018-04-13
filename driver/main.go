@@ -45,8 +45,7 @@ func main() {
 	//elevio.Init(":"+hwPort, 4) //4 = number of floors
 
 	assignedOrders := make(chan elevio.ButtonEvent)
-
-    doorTimeout := make(chan bool)
+	doorTimeout := make(chan bool)
 
 	ButtonPacketTrans := make(chan config.ButtonPressPacket)
 	ButtonPacketRecv := make(chan config.ButtonPressPacket)
@@ -58,14 +57,12 @@ func main() {
 
 	// go Fsm.UpdateElevator(Ch_elvator)
 
-
 	go OrderManager.OrderManager(ButtonPacketTrans, ButtonPacketRecv,
 		 assignedOrders, doorTimeout, ElevatorTrans, ElevatorRecv,
 		 ButtonPress, myID, hwPort)
 	go Fsm.Fsm(assignedOrders, doorTimeout)
-
+	  //fmt.Println("elevator.State: %d", elevator.State)
 	 //go Fsm.Fsm(assignedOrders, floors, doorTimeout)
-
 
 	 select{}
 

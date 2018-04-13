@@ -36,19 +36,18 @@ var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool  //TEST!!
 
 var elev = make(chan config.Elevator)
 
-func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketRecv chan config.ButtonPressPacket, assignedOrders chan elevio.ButtonEvent, doorTimeout chan bool, ElevatorTrans chan config.Elevator, ElevatorRecv chan config.Elevator, ButtonPress chan elevio.ButtonEvent, myID string, hwPort string)  {
+func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketRecv chan config.ButtonPressPacket, assignedOrders chan elevio.ButtonEvent, doorTimeout chan bool, ElevatorTrans chan config.Elevator, ElevatorRecv chan config.Elevator, ButtonPress chan elevio.ButtonEvent, myID string, hwPort string) {
 
     peerUpdateCh := make(chan peers.PeerUpdate)
     peerTxEnable := make(chan bool)
 
-    go peers.Transmitter(15647, myID, peerTxEnable) //15647 , 15670
-    go peers.Receiver(15647, peerUpdateCh) //15647
+    go peers.Transmitter(15847, myID, peerTxEnable) //15647 , 15670
+    go peers.Receiver(15847, peerUpdateCh) //15647
 
     go bcast.Transmitter(23232, ButtonPacketTrans, ElevatorTrans)
     go bcast.Receiver(23232, ButtonPacketRecv, ElevatorRecv)
 
     go elevio.PollButtons(ButtonPress)
-
 
     for{
     		select{
@@ -58,33 +57,67 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
     			fmt.Printf("  New:      %q\n", p.New)
     			fmt.Printf("  Lost:     %q\n", p.Lost)
 
-                if(p.New != "" && myID == p.New){
-                    addElevator(myID, Fsm.GetElevatorStatus())
+                if(p.New != ""){
+                    addElevator(p.New, Fsm.GetElevatorStatus())
+                    fmt.Println("--------MapUpdate------")
                     fmt.Println("Legger til ny heis")
-                    elem := elevators[myID]
-                    fmt.Println("maps : ", elem.Floor)
+                    //elem := elevators[myID]
+                    fmt.Println("-----------------------")
                 }
+                if len(p.Lost) != 0{
+                  for i := range p.Lost{
+                    delete(elevators, p.Lost[i])
+                  }
+                }
+                for key, value := range elevators{
+                  fmt.Println("Key: ", key, "Value: ", value)}
 
     		case buttonPress := <-ButtonPress:
     			fmt.Println("Button press at " + myID)
     			fmt.Println(buttonPress)
-                if buttonPress.Button == elevio.BT_Cab  {   //Differentiating between cab and hall orderss
+
+          //Add Cab orders directly to Fsm
+          if buttonPress.Button == elevio.BT_Cab{
+            assignedOrders <- buttonPress
+          //The order is a HallOrder, and must be assigned to an elevator.
+          }else{
+            //SyncInformation
+            //Calculate Cost
+            //
+          }
+
+/*
+          assignedOrders <- buttonPress
+          elev1 := <- elev
+          fmt.Println("assignorders")
+          ElevatorTrans <- elev1
+          ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
+*/
+              /*  if buttonPress.Button == elevio.BT_Cab  {   //Differentiating between cab and hall orderss
                     assignedOrders <- buttonPress
                     fmt.Println("CabOrder added")
+                    elev1 := <- elev
+                    ElevatorTrans <- elev1
+                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
 
-                }else{
-                    ElevatorTrans <- elev
-                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button, }
 
-                }
+               }else{
+                    elev1 := <- elev
+                    ElevatorTrans <- elev1
+                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
+
+                }*/
 
     		case recvPacket := <-ButtonPacketRecv:
-
                 //assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
         		fmt.Println("Received from " + recvPacket.Sender)
         		fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
 
-            if (recvPacket.Status == config.NotOrderAssigned){  
+
+            /*elev2 := <-ElevatorRecv
+            printInfo(elev2)
+
+            if (recvPacket.Status == config.NotOrderAssigned){
               //synce heisinfo
               if(IsElevatorNearest(myID)){
                 assignedOrders <- recvPacket.Button
@@ -98,20 +131,29 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
 
               }
             }
-          ButtonPacketTrans <- recvPacket
+          ButtonPacketTrans <- recvPacket*/
 
-    	}
+    	} // select
 
-    }
+    } // for
 
+} // main
+
+
+func printInfo(e config.Elevator)  {
+  fmt.Println("HEIS INFO")
+  fmt.Println("Floor ", e.Floor)
+  fmt.Println("State ", e.State)
+  fmt.Println("Direction ", e.Direction)
+  fmt.Println("Order ", e.AssignedRequests)
 }
 
 func IsElevatorNearest(myID string) bool {
-  myCost = timeToIdle(elevator[myID])
+  myCost := timeToIdle(elevators[myID])
 
   for k := range elevators {
     if(k != myID){
-      cost = timeToIdle(elevator[k])
+      cost := timeToIdle(elevators[k])
       if(cost < myCost){
         return false
       }

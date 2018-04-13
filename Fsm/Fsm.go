@@ -69,6 +69,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 						elevator.State = ES_DOOROPEN
 						elevio.SetDoorOpenLamp(true)
 						doortimer.Reset(3 * time.Second)
+
 					}else{
 						addOrder(newOrder)
 						fmt.Println("Orders: %v", elevator.AssignedRequests)
@@ -193,7 +194,6 @@ func addOrder(pressedButton elevio.ButtonEvent) bool{
 		return true
 	}
 	return false
-
 }
 
 func changeDirection(){
@@ -296,7 +296,7 @@ func IsOrderBelow(floor int) bool{
 }
 
 func ClearOrdersAtCurrentFloor(floor int) {
-	fmt.Println("Er inne i ClearOrdersAtCurrentFloor")
+	//fmt.Println("Er inne i ClearOrdersAtCurrentFloor")
 
 	elevator.AssignedRequests[floor][elevio.BT_Cab] = false
 	elevio.SetButtonLamp(elevio.BT_Cab, floor, false)
@@ -342,6 +342,7 @@ func DoorTimeout()  {
 
 
 func GetElevatorStatus() config.Elevator {
+	fmt.Println("-----ElevatorStatus------")
 	fmt.Println("floor: ",elevator.Floor)
 	fmt.Println("state: ",elevator.State)
 	fmt.Println("dir: ",elevator.Direction)
