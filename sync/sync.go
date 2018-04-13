@@ -8,38 +8,29 @@ import(
 
 )
 
-func syncAllElevators(Ch_UpdateElevatorStatus chan config.Elevator){
+func SyncAllElevatorStatus(updatedElevator chan config.Elevator){
   for{
-    <- Ch_UpdateElevatorStatus
     select{
+      //In this case it will receive the elevatorobjects with updated info,
+      //and must update the local info it already has gathered (maps).
+      //It also needs to check if it has received any new orders by comparing
+      //the local queue with the received order matrix.
       case msg :=<- networkChannel:
         handleMsg(msg)
+        //In this case it will send the Elevator object into
+        //the assigned channel (networkChannel) every 20th millisecond
       case <- time.After(time.Milllisecond * 20):
           networkChannel <- stateInfo
     }
   }
 }
 
-/*
+func UpdateElevatorStatus() config.Elevator{
   for{
-      select{
-      case buttonPress := <-ButtonPress:
-        addOrder()
-      }
+    select{
+    case <- Ch_UpdateElevatorStatus:
+
 
     }
-
-    func sync(){
-      ButtonPacketTrans <- ButtonPress
-      go bcast.Transmitter(23232, ButtonPacketTrans, ElevatorTrans)
-      go bcast.Receiver(23232, ButtonPacketRecv, ElevatorRecv)
-    }
-
-    for{
-      acked = false
-      while(!acked){
-        sendMessage()
-        waitForAckFor50Mil()
-      }
-    }
-*/
+  }
+}

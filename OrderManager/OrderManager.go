@@ -31,10 +31,10 @@ const ClearRequestType {
 ClearRequestType clearRequestType = ClearRequestType.inDirn;*/
 
 var elevators = make(map[string]config.Elevator)
-
+/*
 var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool  //TEST!!
-
 var elev = make(chan config.Elevator)
+*/
 
 func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketRecv chan config.ButtonPressPacket, assignedOrders chan elevio.ButtonEvent, doorTimeout chan bool, ElevatorTrans chan config.Elevator, ElevatorRecv chan config.Elevator, ButtonPress chan elevio.ButtonEvent, myID string, hwPort string) {
 
@@ -72,7 +72,7 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
                     delete(elevators, p.Lost[i])
                   }
                 }
-                //Only for debugging purposes. Prints out the map, elevator.
+                //Only for debugging purposes. Prints out the map, ie. elevator.
                 for key, value := range elevators{
                   fmt.Println("Key: ", key, "Value: ", value)}
 
@@ -83,9 +83,15 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
           //Add Cab orders directly to Fsm
           if buttonPress.Button == elevio.BT_Cab{
             assignedOrders <- buttonPress
+
           //The order is a HallOrder, and must be assigned to an elevator.
-          }else{
-            //SyncInfo: start broadcasting your own state
+          //Might need an else if-statement and check if there are more than
+          //one elevator active
+          }else if (len(elevators) > 1){
+            assignedOrders <- buttonPress
+
+            //SyncInfo: Since the broadcasting happens in a separate thread. Use the
+            //obtained info to assign order.
 
             //Calculate Cost
             //

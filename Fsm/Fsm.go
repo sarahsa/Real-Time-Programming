@@ -131,7 +131,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool, Ch
 			default:
 				fmt.Println("ERROR. Reaching floor with unknown state")
 			}
-			Ch_UpdateElevatorStatus <- elevator
+			//Ch_UpdateElevatorStatus <- elevator
 
 		case <-doortimer.C:
 			fmt.Println("DoorTimeout")
