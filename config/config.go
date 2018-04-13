@@ -30,8 +30,17 @@ type ButtonPressPacket struct{
 	Sender string
 	Floor int
 	Button elevio.ButtonType
-    StatusOrder bool
+  StatusOrder Status
 }
+
+type Status int
+const (
+  OrderNotAssigned Status = 0
+  OrderAssigned = 1
+  OrderExecuted = 2
+
+)
+
 
 type Queue struct{
     matrix [N_BUTTONS][N_FLOORS]bool

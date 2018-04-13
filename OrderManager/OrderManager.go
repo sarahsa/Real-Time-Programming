@@ -73,36 +73,54 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
                     fmt.Println("CabOrder added")
 
                 }else{
-                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
+                    ElevatorTrans <- elev
+                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button, }
 
                 }
 
     		case recvPacket := <-ButtonPacketRecv:
+
                 //assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
         		fmt.Println("Received from " + recvPacket.Sender)
         		fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
 
+            if (recvPacket.Status == config.NotOrderAssigned){  
+              //synce heisinfo
+              if(IsElevatorNearest(myID)){
+                assignedOrders <- recvPacket.Button
+                recvPacket.Status = config.OrderAssigned
+                fmt.Println("HallOrder added")
 
+              }else if (recvPacket.Status == config.OrderAssigned){
+                //slaa paa lyse
 
+              }else if (recvPacket.Status == config.OrderExecuted){
 
-                /*orderAccepted, changeMade := OrderManager.AddOrder(buttonPress)
-                fmt.Println("Change Made: ", changeMade)
-                if changeMade {
-                    ButtonPacketRecv <- ButtonPressPacket{myID, buttonPress.Floor, int(buttonPress.Button)}
-                }
+              }
+            }
+          ButtonPacketTrans <- recvPacket
 
-            case recvElevPacket := <- ElevatorRecv:
-
-                for k, v := range OrderManager.elevators {
-                    if k != recvPacket.ID {
-                        elevators[recvPacket.ID] = recvPacket
-                    }
-                }*/
     	}
 
     }
 
 }
+
+func IsElevatorNearest(myID string) bool {
+  myCost = timeToIdle(elevator[myID])
+
+  for k := range elevators {
+    if(k != myID){
+      cost = timeToIdle(elevator[k])
+      if(cost < myCost){
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
 
 func addElevator(ip string, elevator config.Elevator)  {
   _, ok := elevators[ip]
@@ -358,4 +376,3 @@ func timeToIdle(elevator config.Elevator) int{
 }*/
 
 //NEED TO BE FIXED, void delegate(CallType c) onClearedRequest = null
-
