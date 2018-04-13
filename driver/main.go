@@ -23,7 +23,6 @@ func main() {
 	myID := *idPtr
 	hwPort := *hwPortPtr*/
 
-
 	var myID string
 	flag.StringVar(&myID, "id", "", "id of this peer")
 	hwPortPtr := flag.String("hwport", "15657", "select w port hw runs on")

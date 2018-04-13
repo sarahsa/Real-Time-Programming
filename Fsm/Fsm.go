@@ -23,7 +23,7 @@ var lastDirection elevio.MotorDirection //Kan hende denne er unødvendig
 var floors = make(chan int)
 
 
-func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
+func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool, Ch_UpdateElevatorStatus chan config.Elevator) {
 	Init()
 	go elevio.PollFloorSensor(floors)
 	doortimer := time.NewTimer(3*time.Second)
@@ -127,9 +127,11 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool) {
 					}
 				}
 
+
 			default:
 				fmt.Println("ERROR. Reaching floor with unknown state")
 			}
+			Ch_UpdateElevatorStatus <- elevator
 
 		case <-doortimer.C:
 			fmt.Println("DoorTimeout")

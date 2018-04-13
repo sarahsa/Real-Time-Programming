@@ -49,6 +49,8 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
 
     go elevio.PollButtons(ButtonPress)
 
+
+
     for{
     		select{
     		case p := <-peerUpdateCh:
@@ -64,11 +66,13 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
                     //elem := elevators[myID]
                     fmt.Println("-----------------------")
                 }
+
                 if len(p.Lost) != 0{
                   for i := range p.Lost{
                     delete(elevators, p.Lost[i])
                   }
                 }
+                //Only for debugging purposes. Prints out the map, elevator.
                 for key, value := range elevators{
                   fmt.Println("Key: ", key, "Value: ", value)}
 
@@ -81,7 +85,8 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
             assignedOrders <- buttonPress
           //The order is a HallOrder, and must be assigned to an elevator.
           }else{
-            //SyncInformation
+            //SyncInfo: start broadcasting your own state
+
             //Calculate Cost
             //
           }
