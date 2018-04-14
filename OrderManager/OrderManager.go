@@ -44,8 +44,8 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
                   ButtonPacketRecv chan config.ButtonPressPacket,
                   assignedOrders chan elevio.ButtonEvent,
                   doorTimeout chan bool,
-                  ElevatorTrans chan config.Elevator,
-                  ElevatorRecv chan config.Elevator,
+                  ElevatorPacketTrans chan config.ElevatorStatusPacket,
+                  ElevatorPacketRecv chan config.ElevatorStatusPacket,
                   ButtonPress chan elevio.ButtonEvent,
                   myID string,
                   hwPort string,
@@ -57,12 +57,15 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
     go peers.Transmitter(15847, myID, peerTxEnable) //15647 , 15670
     go peers.Receiver(15847, peerUpdateCh) //15647
 
-    go bcast.Transmitter(23232, ButtonPacketTrans, ElevatorTrans)
-    go bcast.Receiver(23232, ButtonPacketRecv, ElevatorRecv)
+    go bcast.Transmitter(23232, ButtonPacketTrans, ElevatorPacketTrans)
+    go bcast.Receiver(23232, ButtonPacketRecv, ElevatorPacketRecv)
 
     go elevio.PollButtons(ButtonPress)
 
-    go sync.SendElevatorUpdate(activeElevators[myID], UpdatedElevatorStatus, ElevatorTrans)
+    go sync.SendElevatorUpdate(activeElevators[myID],
+                                UpdatedElevatorStatus,
+                                ElevatorPacketTrans,
+                                myID)
 
 
     for{
@@ -111,8 +114,8 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
             //
           }
           //Receive the information which is being broadcasted
-        case updatedElevator := <- ElevatorRecv:
-          fmt.Println("Elevator updated. updatedElevator: ", updatedElevator)
+        case updatedElevator := <- ElevatorPacketRecv:
+          fmt.Println("updatedElevator_id: ", updatedElevator.ID)
 
 /*
           assignedOrders <- buttonPress

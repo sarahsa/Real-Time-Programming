@@ -6,7 +6,7 @@ import(
   //"../elevio"
   "../config"
   "time"
-  "fmt"
+  //"fmt"
 
 )
 /*
@@ -29,19 +29,19 @@ func SyncAllElevatorStatus(updatedElevator chan config.Elevator){
 */
 func SendElevatorUpdate(elevator config.Elevator,
                         UpdatedElevatorStatus chan config.Elevator,
-                        ElevatorTrans chan config.Elevator){
+                        ElevatorPacketTrans chan config.ElevatorStatusPacket,
+                        myID string){
   for{
     select{
     case updatedElevator := <- UpdatedElevatorStatus:
       elevator = updatedElevator
       //broadcast
-      ElevatorTrans <- elevator
+      ElevatorPacketTrans <- config.ElevatorStatusPacket{myID, elevator}
     default:
       //Not sure if this works. The channel might lock the code here.
     <- time.After(time.Millisecond * 2000)
-    fmt.Println("After 20 ms")
     //broadcast
-    ElevatorTrans <- elevator
+    ElevatorPacketTrans <- config.ElevatorStatusPacket{myID, elevator}
 
     }
   }

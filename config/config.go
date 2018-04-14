@@ -25,6 +25,10 @@ type Elevator struct {
     AssignedRequests[N_FLOORS][N_BUTTONS] bool
     //request ButtonEvent
 }
+type ElevatorStatusPacket struct{
+  ID string
+  ElevatorStatus Elevator
+}
 
 type ButtonPressPacket struct{
 	Sender string

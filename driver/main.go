@@ -53,8 +53,8 @@ func main() {
 	ButtonPacketTrans := make(chan config.ButtonPressPacket)
 	ButtonPacketRecv := make(chan config.ButtonPressPacket)
 
-	ElevatorTrans := make(chan config.Elevator)
-	ElevatorRecv := make(chan config.Elevator)
+	ElevatorPacketTrans := make(chan config.ElevatorStatusPacket)
+	ElevatorPacketRecv := make(chan config.ElevatorStatusPacket)
 
 	ButtonPress := make(chan elevio.ButtonEvent)
 
@@ -64,8 +64,8 @@ func main() {
 																ButtonPacketRecv,
 		 														assignedOrders,
 																doorTimeout,
-																ElevatorTrans,
-																ElevatorRecv,
+																ElevatorPacketTrans,
+																ElevatorPacketRecv,
 		 														ButtonPress,
 																myID,
 																hwPort,
