@@ -11,9 +11,10 @@ import (
       //"log"
       //"io/ioutil"
       //"os"
-      //"time"
+      "time"
       "../Fsm"
       "../sync"
+      "math/rand"
 )
 
 const (
@@ -33,12 +34,13 @@ ClearRequestType clearRequestType = ClearRequestType.inDirn;*/
 
 var activeElevators = make(map[string]config.Elevator)
 
-//This map might be unnecessary
-var updatedElevators = make(map[string]config.Elevator)
+//This map might be unnecessary, because its almost the same as the one above
+var allUpdatedElevators = make(map[string]config.Elevator)
 /*
 var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool  //TEST!!
 var elev = make(chan config.Elevator)
 */
+var TestElevatorID[]string
 
 func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
                   ButtonPacketRecv chan config.ButtonPressPacket,
@@ -77,6 +79,7 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
     			fmt.Printf("  Lost:     %q\n", p.Lost)
 
                 if(p.New != ""){
+                    TestElevatorID = append(TestElevatorID, p.New)
                     addElevator(p.New, Fsm.GetElevatorStatus())
                     fmt.Println("--------MapUpdate------")
                     fmt.Println("Legger til ny heis")
@@ -99,13 +102,19 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 
           //Add Cab orders directly to Fsm
           if buttonPress.Button == elevio.BT_Cab{
+            //Backup cabOrders to file
             assignedOrders <- buttonPress
 
           //The order is a HallOrder, and must be assigned to an elevator.
-          //Might need an else if-statement and check if there are more than
-          //one elevator active
           }else if (len(activeElevators) > 1){
-            assignedOrders <- buttonPress
+            //assignedOrders <- buttonPress
+
+            //This returns ID of the elevator which should execute the order.
+            executer:= AssignOrderToRandomElevator()
+            fmt.Println("Executer = ", executer)
+            elem :=allUpdatedElevators[executer]
+            elem.
+
 
             //SyncInfo: Since the broadcasting happens in a separate thread. Use the
             //obtained info to assign order.
@@ -113,64 +122,31 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
             //Calculate Cost
             //
           }
-          //Receive the information which is being broadcasted
+          //Receive the elevator information being broadcasted. It receives the updated
+          //status on this channel. Should we add all the objects in a map? If so, when a peer
+          //disappears it should also be removed from this map. Maybe we could just update the elevator map.
+          //What about MotorTimeout??
         case updatedElevator := <- ElevatorPacketRecv:
           fmt.Println("updatedElevator_id: ", updatedElevator.ID)
+          allUpdatedElevators[updatedElevator.ID] = updatedElevator.ElevatorStatus
 
-/*
-          assignedOrders <- buttonPress
-          elev1 := <- elev
-          fmt.Println("assignorders")
-          ElevatorTrans <- elev1
-          ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
-*/
-              /*  if buttonPress.Button == elevio.BT_Cab  {   //Differentiating between cab and hall orderss
-                    assignedOrders <- buttonPress
-                    fmt.Println("CabOrder added")
-                    elev1 := <- elev
-                    ElevatorTrans <- elev1
-                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
+          for key, value := range allUpdatedElevators{
+            fmt.Println("allUpdatedElevators: ")
+            fmt.Println("Key: ", key, "Value: ", value)}
 
-
-               }else{
-                    elev1 := <- elev
-                    ElevatorTrans <- elev1
-                    ButtonPacketTrans <- config.ButtonPressPacket{myID, buttonPress.Floor, buttonPress.Button}
-
-                }*/
 
     		case recvPacket := <-ButtonPacketRecv:
                 //assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
         		fmt.Println("Received from " + recvPacket.Sender)
         		fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
 
+    	}
 
-            /*elev2 := <-ElevatorRecv
-            printInfo(elev2)
+    }
 
-            if (recvPacket.Status == config.NotOrderAssigned){
-              //synce heisinfo
-              if(IsElevatorNearest(myID)){
-                assignedOrders <- recvPacket.Button
-                recvPacket.Status = config.OrderAssigned
-                fmt.Println("HallOrder added")
+}
 
-              }else if (recvPacket.Status == config.OrderAssigned){
-                //slaa paa lyse
-
-              }else if (recvPacket.Status == config.OrderExecuted){
-
-              }
-            }
-          ButtonPacketTrans <- recvPacket*/
-
-    	} // select
-
-    } // for
-
-} // main
-
-
+//debugging purposes
 func printInfo(e config.Elevator)  {
   fmt.Println("HEIS INFO")
   fmt.Println("Floor ", e.Floor)
@@ -194,6 +170,18 @@ func IsElevatorNearest(myID string) bool {
   return true
 }
 
+func FindNearestElevator(myID string) string {
+  return "no"
+
+}
+
+func AssignOrderToRandomElevator()string{
+  rand.Seed(time.Now().Unix())
+  randomElev := TestElevatorID[rand.Intn(len(TestElevatorID))]
+  fmt.Println("The elevator chosen is: %s", randomElev)
+  return randomElev
+
+}
 
 func addElevator(ip string, elevator config.Elevator)  {
   _, ok := activeElevators[ip]
