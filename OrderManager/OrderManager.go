@@ -119,7 +119,8 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 				executer := AssignOrderToRandomElevator()
 				fmt.Println("Executer = ", executer)
 				//elem :=allUpdatedElevators[executer]
-				ButtonPacketTrans <- config.ButtonPressPacket{executer, buttonPress}
+
+				ButtonPacketTrans <- config.ButtonPressPacket{executer, buttonPress, true}
 
 				//SyncInfo: Since the broadcasting happens in a separate thread. Use the
 				//obtained info to assign order.
@@ -152,7 +153,16 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 				fmt.Println("Exceuter ", recvPacket.Executer)
 				fmt.Println("ButtenEvent", recvPacket.Button.Floor, recvPacket.Button)
 				fmt.Println("-----------------------------------------")
-			}
+			} else if recvPacket.AssignedOrder == true { //HallOrderLamp on
+				button := recvPacket.Button
+				elevio.SetButtonLamp(button.Button, button.Floor, true)
+			} /*else {
+				button := recvPacket.Button
+				if allUpdatedElevators[recvPacket.Executer].AssignedRequests[button.Floor][button.Button] == false {
+					elevio.SetButtonLamp(button.Button, button.Floor, false)
+					//bool = false
+				}
+			}*/
 
 		}
 
@@ -240,6 +250,7 @@ func requests_shouldStop(elevator config.Elevator) bool {
 		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallUp] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderAbove(elevator.Floor)
 	case elevio.MD_Stop:
 		return true
+		//return Fsm.CheckOrdersAtFloor(elevator.Floor)
 	default:
 		return true
 	}
@@ -257,6 +268,41 @@ func request_clearAtCurrentFloor(e_old config.Elevator) config.Elevator {
 	}
 	return e
 }
+
+/*func request_clearAtCurrentFloor(elev chan config.Elevator) Elevator {
+    switch elev.config.onClearedRequestVariant {
+    case CV_ALL:
+        for btn Button := 0; btn < N_BUTTONS; btn++  {
+            e.AssignedRequests[e.Floor][btn] = 0
+        }
+        break
+    case CV_InDirn:
+        e.AssignedRequests[e.Floor][BT_CAB] = 0
+        switch e.dirn {
+        case D_Up:
+            e.AssignedRequests[e.Floor][B_HallUp] = 0
+            if !Fsm.IsOrderAbove(e) {
+                e.AssignedRequests[e.Floor][B_HallDown] = 0
+            }
+            break
+        case D_Down:
+            e.AssignedRequests[e.Floor][B_HallDown] = 0
+            if (!Fsm.IsOrderBelow(e)) {
+                e.AssignedRequests[e.Floor][B_HallUp] = 0
+            }
+            break
+        case D_Stop:
+        configault:
+            e.AssignedRequests[e.Floor][B_HallUp] = 0
+            e.AssignedRequests[e.Floor][B_HallDown] = 0
+            break
+        }
+        break
+    configault:
+        break
+    }
+    return e
+}*/
 
 func timeToIdle(elevator config.Elevator) time.Duration {
 	duration := 0 * time.Millisecond
@@ -294,8 +340,10 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 	lowerCostID := ""
 
 	for k, e := range allUpdatedElevators {
-		elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests}
+		fmt.Println("ELEV 1", e)
+		elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests} //??
 		elev2.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
+		fmt.Println("ELEV 2:", elev2)
 		cost := timeToIdle(elev2)
 		fmt.Println("-----------COST in FOR------------")
 		fmt.Println("LowerCost: %d", cost)
@@ -315,6 +363,9 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 			fmt.Println("LowerCostID: ", lowerCostID)
 			fmt.Println("-----------------------")
 		}
+
+		fmt.Println("AFTER COST ELEV 1", e)
+		//fmt.Println(elev2)
 	}
 	return lowerCostID
 }

@@ -37,8 +37,8 @@ type ElevatorStatusPacket struct {
 type ButtonPressPacket struct {
 	Executer string
 	//Floor int
-	Button elevio.ButtonEvent
-	//StatusOrder Status
+	Button      elevio.ButtonEvent
+	OrderStatus Status
 }
 
 type Status int
