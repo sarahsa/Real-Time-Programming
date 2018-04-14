@@ -1,13 +1,15 @@
 package sync
 
 import(
-  "../network/network/peers"
-  "../network/network/bcast"
-  "../elevio"
+  //"../network/network/peers"
+  //"../network/network/bcast"
+  //"../elevio"
   "../config"
+  "time"
+  "fmt"
 
 )
-
+/*
 func SyncAllElevatorStatus(updatedElevator chan config.Elevator){
   for{
     select{
@@ -24,12 +26,22 @@ func SyncAllElevatorStatus(updatedElevator chan config.Elevator){
     }
   }
 }
-
-func UpdateElevatorStatus() config.Elevator{
+*/
+func SendElevatorUpdate(elevator config.Elevator,
+                        UpdatedElevatorStatus chan config.Elevator,
+                        ElevatorTrans chan config.Elevator){
   for{
     select{
-    case <- Ch_UpdateElevatorStatus:
-
+    case updatedElevator := <- UpdatedElevatorStatus:
+      elevator = updatedElevator
+      //broadcast
+      ElevatorTrans <- elevator
+    default:
+      //Not sure if this works. The channel might lock the code here.
+    <- time.After(time.Millisecond * 2000)
+    fmt.Println("After 20 ms")
+    //broadcast
+    ElevatorTrans <- elevator
 
     }
   }

@@ -11,6 +11,7 @@ import(
 	"../OrderManager"
 	"../config"
 	"../Fsm"
+	//"../sync"
 
 )
 func main() {
@@ -46,8 +47,9 @@ func main() {
 	assignedOrders := make(chan elevio.ButtonEvent)
 	doorTimeout := make(chan bool)
 
-	UpdateElevatorStatus := make(chan config.Elevator)
+	UpdatedElevatorStatus := make(chan config.Elevator)
 
+//These four channels might be moved to OM
 	ButtonPacketTrans := make(chan config.ButtonPressPacket)
 	ButtonPacketRecv := make(chan config.ButtonPressPacket)
 
@@ -58,10 +60,17 @@ func main() {
 
 	// go Fsm.UpdateElevator(Ch_elvator)
 
-	go OrderManager.OrderManager(ButtonPacketTrans, ButtonPacketRecv,
-		 assignedOrders, doorTimeout, ElevatorTrans, ElevatorRecv,
-		 ButtonPress, myID, hwPort)
-	go Fsm.Fsm(assignedOrders, doorTimeout, UpdateElevatorStatus)
+	go OrderManager.OrderManager(ButtonPacketTrans,
+																ButtonPacketRecv,
+		 														assignedOrders,
+																doorTimeout,
+																ElevatorTrans,
+																ElevatorRecv,
+		 														ButtonPress,
+																myID,
+																hwPort,
+															UpdatedElevatorStatus)
+	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus)
 	  //fmt.Println("elevator.State: %d", elevator.State)
 	 //go Fsm.Fsm(assignedOrders, floors, doorTimeout)
 

@@ -13,6 +13,7 @@ import (
       //"os"
       //"time"
       "../Fsm"
+      "../sync"
 )
 
 const (
@@ -30,13 +31,25 @@ const ClearRequestType {
 
 ClearRequestType clearRequestType = ClearRequestType.inDirn;*/
 
-var elevators = make(map[string]config.Elevator)
+var activeElevators = make(map[string]config.Elevator)
+
+//This map might be unnecessary
+var updatedElevators = make(map[string]config.Elevator)
 /*
 var ExecuteOrders[config.N_FLOORS][config.N_BUTTONS] bool  //TEST!!
 var elev = make(chan config.Elevator)
 */
 
-func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketRecv chan config.ButtonPressPacket, assignedOrders chan elevio.ButtonEvent, doorTimeout chan bool, ElevatorTrans chan config.Elevator, ElevatorRecv chan config.Elevator, ButtonPress chan elevio.ButtonEvent, myID string, hwPort string) {
+func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
+                  ButtonPacketRecv chan config.ButtonPressPacket,
+                  assignedOrders chan elevio.ButtonEvent,
+                  doorTimeout chan bool,
+                  ElevatorTrans chan config.Elevator,
+                  ElevatorRecv chan config.Elevator,
+                  ButtonPress chan elevio.ButtonEvent,
+                  myID string,
+                  hwPort string,
+                  UpdatedElevatorStatus chan config.Elevator) {
 
     peerUpdateCh := make(chan peers.PeerUpdate)
     peerTxEnable := make(chan bool)
@@ -49,6 +62,7 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
 
     go elevio.PollButtons(ButtonPress)
 
+    go sync.SendElevatorUpdate(activeElevators[myID], UpdatedElevatorStatus, ElevatorTrans)
 
 
     for{
@@ -69,11 +83,11 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
 
                 if len(p.Lost) != 0{
                   for i := range p.Lost{
-                    delete(elevators, p.Lost[i])
+                    delete(activeElevators, p.Lost[i])
                   }
                 }
                 //Only for debugging purposes. Prints out the map, ie. elevator.
-                for key, value := range elevators{
+                for key, value := range activeElevators{
                   fmt.Println("Key: ", key, "Value: ", value)}
 
     		case buttonPress := <-ButtonPress:
@@ -87,7 +101,7 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
           //The order is a HallOrder, and must be assigned to an elevator.
           //Might need an else if-statement and check if there are more than
           //one elevator active
-          }else if (len(elevators) > 1){
+          }else if (len(activeElevators) > 1){
             assignedOrders <- buttonPress
 
             //SyncInfo: Since the broadcasting happens in a separate thread. Use the
@@ -96,6 +110,9 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket, ButtonPacketR
             //Calculate Cost
             //
           }
+          //Receive the information which is being broadcasted
+        case updatedElevator := <- ElevatorRecv:
+          fmt.Println("Elevator updated. updatedElevator: ", updatedElevator)
 
 /*
           assignedOrders <- buttonPress
@@ -160,11 +177,11 @@ func printInfo(e config.Elevator)  {
 }
 
 func IsElevatorNearest(myID string) bool {
-  myCost := timeToIdle(elevators[myID])
+  myCost := timeToIdle(activeElevators[myID])
 
-  for k := range elevators {
+  for k := range activeElevators {
     if(k != myID){
-      cost := timeToIdle(elevators[k])
+      cost := timeToIdle(activeElevators[k])
       if(cost < myCost){
         return false
       }
@@ -176,9 +193,9 @@ func IsElevatorNearest(myID string) bool {
 
 
 func addElevator(ip string, elevator config.Elevator)  {
-  _, ok := elevators[ip]
+  _, ok := activeElevators[ip]
   if (ok == false){
-      elevators[ip] = elevator
+      activeElevators[ip] = elevator
   }
 }
 

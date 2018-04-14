@@ -98,6 +98,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool, Ch
 				lastDirection = elevator.Direction
 				elevator.Direction = elevio.MD_Stop
 				elevator.State = ES_IDLE
+				Ch_UpdateElevatorStatus <- elevator
 
 			case ES_MOVING:
 				if reachedFloor == 3 || reachedFloor == 0{
@@ -114,6 +115,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool, Ch
 					elevio.SetDoorOpenLamp(true)
 					doortimer.Reset(3 * time.Second)
 					elevator.State = ES_DOOROPEN
+					Ch_UpdateElevatorStatus <- elevator
 				}else{
 					changeDirection()
 					if CheckOrdersAtFloor(reachedFloor) {
@@ -124,6 +126,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent, Ch_DoorTimeout chan bool, Ch
 						elevio.SetDoorOpenLamp(true)
 						doortimer.Reset(3 * time.Second)
 						elevator.State = ES_DOOROPEN
+						Ch_UpdateElevatorStatus <- elevator
 					}
 				}
 
