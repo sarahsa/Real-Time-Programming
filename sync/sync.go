@@ -30,6 +30,22 @@ func SendElevatorUpdate(elevator config.Elevator,
 	}
 }
 
-func UpdateLocalQueue() {
+func SyncLight(Lights config.LightInfo,
+	LightInfo chan config.LightInfo,
+	LightPacketTrans chan config.LightInfo,
+	LightPacketRecv chan config.LightInfo) {
+
+	for {
+		select {
+		case LightInfo := <-LightPacketRecv:
+			Lights = LightInfo
+			LightPacketTrans <- Lights
+
+		default:
+			<-time.After(time.Millisecond * 200)
+			LightPacketTrans <- Lights
+
+		}
+	}
 
 }

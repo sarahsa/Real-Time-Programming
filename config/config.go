@@ -12,6 +12,8 @@ const (
 	BT_HallUp   = 0
 	BT_HallDown = 1
 	BT_CAB      = 2
+
+	//var LocalQueue[N_FLOORS][N_BUTTONS]bool
 )
 
 type Elevator struct {
@@ -20,6 +22,7 @@ type Elevator struct {
 	State            int
 	Direction        elevio.MotorDirection
 	AssignedRequests [N_FLOORS][N_BUTTONS]bool
+	LightMatrix      [N_FLOORS][N_BUTTONS - 1]bool
 	//request ButtonEvent
 }
 type ElevatorStatusPacket struct {
@@ -39,6 +42,11 @@ type ButtonPressPacket struct {
 	//Floor int
 	Button      elevio.ButtonEvent
 	OrderStatus Status
+}
+
+type LightInfo struct {
+	Button      elevio.ButtonEvent
+	LightStatus bool
 }
 
 type Status int

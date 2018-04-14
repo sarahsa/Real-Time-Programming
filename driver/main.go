@@ -1,19 +1,20 @@
 package main
 
-import(
+import (
 	//"../network/network/bcast"
 	//"../network/network/peers"
-	"../network/network/localip"
-	"fmt"
 	"flag"
+	"fmt"
 	"os"
-	"../elevio"
+
+	"../Fsm"
 	"../OrderManager"
 	"../config"
-	"../Fsm"
+	"../elevio"
+	"../network/network/localip"
 	//"../sync"
-
 )
+
 func main() {
 
 	//Fungerte ved aa fa port og id fra terminalen.
@@ -32,9 +33,9 @@ func main() {
 
 	elevio.Init(":"+hwPort, 4)
 
-	if myID == ""{
+	if myID == "" {
 		localIP, err := localip.LocalIP()
-		if err != nil{
+		if err != nil {
 			fmt.Println(err)
 			fmt.Println("Diconnected")
 			localIP = "DISCONNECTED"
@@ -49,32 +50,30 @@ func main() {
 
 	UpdatedElevatorStatus := make(chan config.Elevator)
 
-//These four channels might be moved to OM
+	UpdateLightStatus := make(chan config.LightInfo)
+
+	//These four channels might be moved to OM
 	ButtonPacketTrans := make(chan config.ButtonPressPacket)
 	ButtonPacketRecv := make(chan config.ButtonPressPacket)
 
 	ElevatorPacketTrans := make(chan config.ElevatorStatusPacket)
 	ElevatorPacketRecv := make(chan config.ElevatorStatusPacket)
 
+	LightPacketTrans := make(chan config.LightInfo)
+	LightPacketRecv := make(chan config.LightInfo)
+
 	ButtonPress := make(chan elevio.ButtonEvent)
 
 	// go Fsm.UpdateElevator(Ch_elvator)
 
-	go OrderManager.OrderManager(ButtonPacketTrans,
-																ButtonPacketRecv,
-		 														assignedOrders,
-																doorTimeout,
-																ElevatorPacketTrans,
-																ElevatorPacketRecv,
-		 														ButtonPress,
-																myID,
-																hwPort,
-															UpdatedElevatorStatus)
-	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus)
-	  //fmt.Println("elevator.State: %d", elevator.State)
-	 //go Fsm.Fsm(assignedOrders, floors, doorTimeout)
+	go OrderManager.OrderManager(ButtonPacketTrans, ButtonPacketRecv, assignedOrders,
+		doorTimeout, ElevatorPacketTrans, ElevatorPacketRecv, ButtonPress, myID,
+		hwPort, UpdatedElevatorStatus, LightPacketTrans, LightPacketRecv)
+	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus, UpdateLightStatus)
+	//fmt.Println("elevator.State: %d", elevator.State)
+	//go Fsm.Fsm(assignedOrders, floors, doorTimeout)
 
-	 select{}
+	select {}
 
 }
 

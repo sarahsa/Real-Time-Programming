@@ -47,6 +47,8 @@ var elev = make(chan config.Elevator)
 */
 var TestElevatorID []string
 
+var LightMatrix = make(map[string]bool)
+
 func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 	ButtonPacketRecv chan config.ButtonPressPacket,
 	assignedOrders chan elevio.ButtonEvent,
@@ -56,7 +58,9 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 	ButtonPress chan elevio.ButtonEvent,
 	myID string,
 	hwPort string,
-	UpdatedElevatorStatus chan config.Elevator) {
+	UpdatedElevatorStatus chan config.Elevator,
+	LightPacketTrans chan config.LightInfo,
+	LightPacketRecv chan config.LightInfo) {
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
@@ -73,6 +77,7 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 		UpdatedElevatorStatus,
 		ElevatorPacketTrans,
 		myID)
+	//go sync.SyncAllLights(LightPacketTrans, LightPacketRecv)
 
 	for {
 		select {
@@ -85,6 +90,10 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 			if p.New != "" {
 				TestElevatorID = append(TestElevatorID, p.New)
 				addElevator(p.New, Fsm.GetElevatorStatus())
+				//addLightMatrix(p.New, l)
+				//LightMatrix[p.New] = config.LocalQueue
+				//LightMatrix = [ [false false false], [false false false], [false false false], [false false false] ]
+
 				fmt.Println("--------MapUpdate------")
 				fmt.Println("Legger til ny heis")
 				//elem := elevators[myID]
@@ -115,12 +124,13 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 				//assignedOrders <- buttonPress
 
 				//This returns ID of the elevator which should execute the order.
-				//executer := CalculateCost(buttonPress)
-				executer := AssignOrderToRandomElevator()
+				executer := CalculateCost(buttonPress)
+				//executer := AssignOrderToRandomElevator()
+
 				fmt.Println("Executer = ", executer)
 				//elem :=allUpdatedElevators[executer]
 
-				ButtonPacketTrans <- config.ButtonPressPacket{executer, buttonPress, true}
+				ButtonPacketTrans <- config.ButtonPressPacket{executer, buttonPress, config.OrderNotAssigned}
 
 				//SyncInfo: Since the broadcasting happens in a separate thread. Use the
 				//obtained info to assign order.
@@ -144,40 +154,35 @@ func OrderManager(ButtonPacketTrans chan config.ButtonPressPacket,
 
 		case recvPacket := <-ButtonPacketRecv:
 			//assignedOrders <- elevio.ButtonEvent{recvPacket.Floor, recvPacket.Button}
+			//button := recvPacket.Button
 			fmt.Println("Received from " + recvPacket.Executer)
-			//fmt.Println(recvPacket.Floor, " ", recvPacket.Button)
+			//lightMatrix[button.Floor][button.Button] = true
 
-			if recvPacket.Executer == myID {
+			//fmt.Println(recvPacket.Floor, " ", recvPacket.Button
+			/*if recvPacket.Executer == myID {
 				assignedOrders <- recvPacket.Button
+				//lightMatrix[button.Floor][button.Button] = true
 				fmt.Println("-------------- BUTTON -------------------")
 				fmt.Println("Exceuter ", recvPacket.Executer)
 				fmt.Println("ButtenEvent", recvPacket.Button.Floor, recvPacket.Button)
 				fmt.Println("-----------------------------------------")
-			} else if recvPacket.AssignedOrder == true { //HallOrderLamp on
-				button := recvPacket.Button
-				elevio.SetButtonLamp(button.Button, button.Floor, true)
-			} /*else {
-				button := recvPacket.Button
-				if allUpdatedElevators[recvPacket.Executer].AssignedRequests[button.Floor][button.Button] == false {
-					elevio.SetButtonLamp(button.Button, button.Floor, false)
-					//bool = false
-				}
 			}*/
+
+		case recvPacket := <-LightPacketRecv:
+			elevio.SetButtonLamp((recvPacket.Button).Button, (recvPacket.Button).Floor, recvPacket.LightStatus)
 
 		}
 
 	}
-
 }
 
-//debugging purposes
-func printInfo(e config.Elevator) {
+/*func printInfo(e config.Elevator) {
 	fmt.Println("HEIS INFO")
 	fmt.Println("Floor ", e.Floor)
 	fmt.Println("State ", e.State)
 	fmt.Println("Direction ", e.Direction)
 	fmt.Println("Order ", e.AssignedRequests)
-}
+}*/
 
 func IsElevatorNearest(myID string) bool {
 	myCost := timeToIdle(activeElevators[myID])
@@ -213,6 +218,13 @@ func addElevator(ip string, elevator config.Elevator) {
 		activeElevators[ip] = elevator
 	}
 }
+
+/*func addLightMatrix(ip string, matrix[4][3]bool]) {
+	_, ok := activeElevators[ip]
+	if ok == false {
+		activeElevators[ip] = matrix
+	}
+}*/
 
 func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 	switch elevator.Direction {
@@ -319,6 +331,11 @@ func timeToIdle(elevator config.Elevator) time.Duration {
 
 	case Fsm.ES_DOOROPEN:
 		duration -= DOOR_OPEN_TIME / 2
+		elevator.Direction = requests_chooseDirection(elevator)
+		if elevator.Direction == elevio.MD_Stop {
+			return duration
+		}
+
 	}
 
 	for {
@@ -341,14 +358,14 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 
 	for k, e := range allUpdatedElevators {
 		fmt.Println("ELEV 1", e)
-		elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests} //??
+		elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests, e.LightMatrix} //??
 		elev2.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
 		fmt.Println("ELEV 2:", elev2)
 		cost := timeToIdle(elev2)
 		fmt.Println("-----------COST in FOR------------")
 		fmt.Println("LowerCost: %d", cost)
 		fmt.Println("LowerCostID: ", k)
-		fmt.Println("-----------------------")
+		fmt.Println("-----------------------------------")
 		if cost == lowerCost {
 			lowerCostID = lowestNum(lowerCostID, k)
 			fmt.Println("-----------COST------------")
