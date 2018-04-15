@@ -70,6 +70,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 		myID)
 
 	for {
+		//sync.SyncAllLights(OrderRegistered)
 		select {
 		case p := <-peerUpdateCh:
 			fmt.Printf("Peer update:\n")
@@ -113,6 +114,9 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				//obtained info to assign order.
 
 			}
+		case recvButtonPacket := <-NewOrderRecv:
+			fmt.Println("REceived new order")
+			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
 
 		case order := <-OrderIsExecuted:
 			fmt.Print("ORDER IS EXECUTED")
@@ -132,16 +136,13 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 					fmt.Println("Key: ", key, "Value: ", value)
 				}*/
 
-		case recvButtonPacket := <-NewOrderRecv:
-			fmt.Println("REceived new order")
-			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
-
 		case ack := <-AckReceivedOrderRecv:
 			fmt.Println("Received ack from " + ack.Sender)
 			if ack.Sender != myID {
 				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
 				elevio.SetButtonLamp((ack.Button).Button, (ack.Button).Floor, true)
 			}
+
 			fmt.Println("OrderRegistered: %v", OrderRegistered)
 			if ack.Executer == myID {
 				assignedOrders <- ack.Button
@@ -154,6 +155,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
 			fmt.Println("ackExecuted.Button: ", ackExecuted.Button)
 			elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
+			OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
 
 		}
 

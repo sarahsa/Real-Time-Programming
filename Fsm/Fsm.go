@@ -31,7 +31,8 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 	go elevio.PollFloorSensor(floors)
 	doortimer := time.NewTimer(3 * time.Second)
 	doortimer.Stop()
-
+	motortimer := time.NewTimer(5 * time.Second)
+	motortimer.Stop()
 	for {
 		//Only for debugging purposes
 		switch elevator.State {
@@ -69,6 +70,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			case ES_IDLE:
 				if newOrder.Floor == elevator.Floor {
 					ClearOrdersAtCurrentFloor(elevator.Floor)
+					OrderIsExecuted <- newOrder
 					elevator.State = ES_DOOROPEN
 					elevio.SetDoorOpenLamp(true)
 					doortimer.Reset(3 * time.Second)
@@ -79,6 +81,8 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					fmt.Println("Orders: %v", elevator.AssignedRequests)
 					executeOrder(elevator.Floor, newOrder.Floor)
 					elevator.State = ES_MOVING
+					fmt.Println("REset motortimer")
+					motortimer.Reset(5 * time.Second)
 					Ch_UpdateElevatorStatus <- elevator
 				}
 			case ES_DOOROPEN:
@@ -106,6 +110,8 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				Ch_UpdateElevatorStatus <- elevator
 
 			case ES_MOVING:
+				fmt.Println("REset motortimer")
+				motortimer.Reset(10 * time.Second)
 				if reachedFloor == 3 || reachedFloor == 0 {
 					fmt.Println("Changing direction due to 0 or 3")
 					changeDirection()
@@ -136,6 +142,8 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 						Ch_UpdateElevatorStatus <- elevator
 					}
 				}
+			case ES_STUCK:
+				Init()
 
 			default:
 				fmt.Println("ERROR. Reaching floor with unknown state")
@@ -148,6 +156,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			if CheckIfAnyOrders() {
 				elevator.Direction = lastDirection
 				elevator.State = ES_MOVING
+				motortimer.Reset(10 * time.Second)
 				//Koden under her kan forenkles:
 				if CheckUpcomingFloors(elevator.Floor) {
 					fmt.Println("inside doortimer - checkupcomingfloor")
@@ -167,6 +176,10 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			} else {
 				elevator.State = ES_IDLE
 			}
+		case <-motortimer.C:
+			fmt.Println("Motor timed out")
+			elevio.SetMotorDirection(elevio.MD_Stop)
+			Init()
 
 		}
 	}
@@ -280,9 +293,10 @@ func IsOrderAbove(floor int) bool {
 		return false
 	}
 	for f := floor + 1; f < 4; f++ {
-		if CheckOrdersAtFloor(f) {
-			fmt.Println("It has orders above")
-			return true
+		for b := 0; b < config.N_BUTTONS; b++ {
+			if elevator.AssignedRequests[f][b] {
+				return true
+			}
 		}
 	}
 	return false
@@ -293,9 +307,10 @@ func IsOrderBelow(floor int) bool {
 		return false
 	}
 	for f := 0; f < floor; f++ {
-		if CheckOrdersAtFloor(f) {
-			fmt.Println("It has orders below")
-			return true
+		for b := 0; b < config.N_BUTTONS; b++ {
+			if elevator.AssignedRequests[f][b] {
+				return true
+			}
 		}
 	}
 	return false
@@ -332,13 +347,11 @@ func ClearOrdersAtCurrentFloor(floor int) {
 
 //Med forbehold om feil. Kan ikke returnere cabknapp
 func FromMotorDirectionToButton() elevio.ButtonType {
-	switch lastDirection {
-	case elevio.MD_Up:
+	if lastDirection == elevio.MD_Up {
 		return elevio.BT_HallUp
-	case elevio.MD_Down:
+	} else {
 		return elevio.BT_HallDown
 	}
-	return elevio.BT_Cab
 }
 
 func DoorTimeout() {

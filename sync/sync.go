@@ -3,7 +3,7 @@ package sync
 import (
 	//"../network/network/peers"
 	//"../network/network/bcast"
-	//"../elevio"
+	"../elevio"
 
 	"time"
 
@@ -27,6 +27,14 @@ func SendElevatorUpdate(elevator config.Elevator,
 			//broadcast
 			ElevatorPacketTrans <- config.ElevatorStatusPacket{myID, elevator}
 
+		}
+	}
+}
+
+func SyncAllLights(OrderRegistered [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+	for f := 0; f < config.N_FLOORS; f++ {
+		for b := 0; b < config.N_BUTTONS-1; b++ {
+			elevio.SetButtonLamp(elevio.ButtonType(b), f, OrderRegistered[f][b])
 		}
 	}
 }
