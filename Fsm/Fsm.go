@@ -18,15 +18,13 @@ const (
 )
 
 var elevator config.Elevator
+var lights config.LightInfoPacket
 var lastDirection elevio.MotorDirection //Kan hende denne er unødvendig
 var floors = make(chan int)
 
-var lights config.LightInfo
-
 func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 	Ch_DoorTimeout chan bool,
-	Ch_UpdateElevatorStatus chan config.Elevator,
-	Ch_UpdateLightStatus chan config.LightInfo) {
+	Ch_UpdateElevatorStatus chan config.Elevator) {
 
 	Init()
 	go elevio.PollFloorSensor(floors)
@@ -76,7 +74,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					Ch_UpdateElevatorStatus <- elevator
 
 				} else {
-					addOrder(newOrder, Ch_UpdateLightStatus)
+					addOrder(newOrder)
 					fmt.Println("Orders: %v", elevator.AssignedRequests)
 					executeOrder(elevator.Floor, newOrder.Floor)
 					elevator.State = ES_MOVING
@@ -86,11 +84,11 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				if newOrder.Floor == elevator.Floor {
 					doortimer.Reset(3 * time.Second)
 				} else {
-					addOrder(newOrder, Ch_UpdateLightStatus)
+					addOrder(newOrder)
 				}
 
 			default:
-				addOrder(newOrder, Ch_UpdateLightStatus)
+				addOrder(newOrder)
 				fmt.Println("Orders: %v", elevator.AssignedRequests)
 			}
 
@@ -194,15 +192,13 @@ func Init() {
 }
 
 //returner true dersom ordren er lagt til, false ellers
-func addOrder(pressedButton elevio.ButtonEvent, Ch_UpdateLightStatus chan config.LightInfo) bool {
+func addOrder(pressedButton elevio.ButtonEvent) {
 	fmt.Println("Er inn i addOrder")
 	if elevator.AssignedRequests[pressedButton.Floor][pressedButton.Button] == false {
 		elevator.AssignedRequests[pressedButton.Floor][pressedButton.Button] = true
-		//elevio.SetButtonLamp(pressedButton.Button, pressedButton.Floor, true)
-		Ch_UpdateLightStatus <- config.LightInfo{pressedButton, true}
-		return true
+		elevio.SetButtonLamp(pressedButton.Button, pressedButton.Floor, true)
+
 	}
-	return false
 }
 
 func changeDirection() {

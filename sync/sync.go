@@ -4,6 +4,7 @@ import (
 	//"../network/network/peers"
 	//"../network/network/bcast"
 	//"../elevio"
+
 	"time"
 
 	"../config"
@@ -22,7 +23,7 @@ func SendElevatorUpdate(elevator config.Elevator,
 			ElevatorPacketTrans <- config.ElevatorStatusPacket{myID, elevator}
 		default:
 			//Not sure if this works. The channel might lock the code here.
-			<-time.After(time.Millisecond * 200)
+			<-time.After(time.Millisecond * 2000)
 			//broadcast
 			ElevatorPacketTrans <- config.ElevatorStatusPacket{myID, elevator}
 
@@ -30,22 +31,25 @@ func SendElevatorUpdate(elevator config.Elevator,
 	}
 }
 
-func SyncLight(Lights config.LightInfo,
-	LightInfo chan config.LightInfo,
-	LightPacketTrans chan config.LightInfo,
-	LightPacketRecv chan config.LightInfo) {
+/*
+func SyncAllLights(Lights config.LightInfoPacket,
+	UpdateLightInfoPacket chan config.LightInfoPacket,
+	LightPacketTrans chan config.LightInfoPacket) {
 
 	for {
 		select {
-		case LightInfo := <-LightPacketRecv:
-			Lights = LightInfo
-			LightPacketTrans <- Lights
+		case updateLight := <-UpdateLightInfoPacket:
+			Lights = updateLight
+			fmt.Println("Lights.Button: ", Lights.Button)
+			fmt.Println("Lights.Status: ", Lights.Status)
+			fmt.Println("Sending lightinfo in update case")
+			//LightPacketTrans <- config.LightInfoPacket{Lights.Button, Lights.Status}
 
 		default:
-			<-time.After(time.Millisecond * 200)
-			LightPacketTrans <- Lights
+			<-time.After(time.Millisecond * 300)
+			//LightPacketTrans <- config.LightInfoPacket{Lights.Button, Lights.Status}
 
 		}
 	}
 
-}
+}*/

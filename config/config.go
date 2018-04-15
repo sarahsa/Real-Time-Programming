@@ -30,23 +30,27 @@ type ElevatorStatusPacket struct {
 	ElevatorStatus Elevator
 }
 
-/*type ButtonPressPacket struct{
-	Sender string
-	Floor int
-	Button elevio.ButtonType
-  //StatusOrder Status
-}*/
-
 type ButtonPressPacket struct {
 	Executer string
 	//Floor int
-	Button      elevio.ButtonEvent
-	OrderStatus Status
+	Button elevio.ButtonEvent
+	//OrderStatus Status
 }
 
-type LightInfo struct {
-	Button      elevio.ButtonEvent
-	LightStatus bool
+type NewOrderPacket struct {
+	Executer string
+	//Floor int
+	Button elevio.ButtonEvent
+	//OrderStatus Status
+}
+
+type OrderMatrix struct {
+	AssignedOrders [N_FLOORS][N_BUTTONS]bool
+}
+
+type LightInfoPacket struct {
+	Button elevio.ButtonEvent
+	Status bool
 }
 
 type Status int

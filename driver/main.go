@@ -45,31 +45,30 @@ func main() {
 
 	//elevio.Init(":"+hwPort, 4) //4 = number of floors
 
-	assignedOrders := make(chan elevio.ButtonEvent)
+	assignedOrders := make(chan elevio.ButtonEvent, 10)
 	doorTimeout := make(chan bool)
 
-	UpdatedElevatorStatus := make(chan config.Elevator)
-
-	UpdateLightStatus := make(chan config.LightInfo)
+	UpdatedElevatorStatus := make(chan config.Elevator, 10)
 
 	//These four channels might be moved to OM
-	ButtonPacketTrans := make(chan config.ButtonPressPacket)
-	ButtonPacketRecv := make(chan config.ButtonPressPacket)
+	ButtonPacketTrans := make(chan config.ButtonPressPacket, 10)
+	ButtonPacketRecv := make(chan config.ButtonPressPacket, 10)
 
-	ElevatorPacketTrans := make(chan config.ElevatorStatusPacket)
-	ElevatorPacketRecv := make(chan config.ElevatorStatusPacket)
+	ElevatorPacketTrans := make(chan config.ElevatorStatusPacket, 10)
+	ElevatorPacketRecv := make(chan config.ElevatorStatusPacket, 10)
 
-	LightPacketTrans := make(chan config.LightInfo)
-	LightPacketRecv := make(chan config.LightInfo)
+	AcknowledgmentTrans := make(chan config.NewOrderPacket, 10)
+	AcknowledgmentRecv := make(chan config.NewOrderPacket, 10)
 
-	ButtonPress := make(chan elevio.ButtonEvent)
+	ButtonPress := make(chan elevio.ButtonEvent, 10)
 
 	// go Fsm.UpdateElevator(Ch_elvator)
 
 	go OrderManager.OrderManager(ButtonPacketTrans, ButtonPacketRecv, assignedOrders,
 		doorTimeout, ElevatorPacketTrans, ElevatorPacketRecv, ButtonPress, myID,
-		hwPort, UpdatedElevatorStatus, LightPacketTrans, LightPacketRecv)
-	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus, UpdateLightStatus)
+		hwPort, UpdatedElevatorStatus, AcknowledgmentRecv, AcknowledgmentTrans)
+	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus)
+
 	//fmt.Println("elevator.State: %d", elevator.State)
 	//go Fsm.Fsm(assignedOrders, floors, doorTimeout)
 
