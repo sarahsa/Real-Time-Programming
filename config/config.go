@@ -30,17 +30,17 @@ type ElevatorStatusPacket struct {
 	ElevatorStatus Elevator
 }
 
-type ButtonPressPacket struct {
+type OrderPacket struct {
 	Executer string
 	//Floor int
 	Button elevio.ButtonEvent
 	//OrderStatus Status
 }
 
-type NewOrderPacket struct {
+type AcknowledgmentPacket struct {
+	Sender   string
 	Executer string
-	//Floor int
-	Button elevio.ButtonEvent
+	Button   elevio.ButtonEvent
 	//OrderStatus Status
 }
 

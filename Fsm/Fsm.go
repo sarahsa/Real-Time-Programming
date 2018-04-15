@@ -24,7 +24,8 @@ var floors = make(chan int)
 
 func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 	Ch_DoorTimeout chan bool,
-	Ch_UpdateElevatorStatus chan config.Elevator) {
+	Ch_UpdateElevatorStatus chan config.Elevator,
+	OrderIsExecuted chan elevio.ButtonEvent) {
 
 	Init()
 	go elevio.PollFloorSensor(floors)
@@ -116,6 +117,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					elevator.Direction = elevio.MD_Stop
 					elevio.SetMotorDirection(elevator.Direction)
 					ClearOrdersAtCurrentFloor(elevator.Floor)
+					OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
 					elevio.SetDoorOpenLamp(true)
 					doortimer.Reset(3 * time.Second)
 					elevator.State = ES_DOOROPEN
@@ -127,6 +129,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 						elevator.Direction = elevio.MD_Stop
 						elevio.SetMotorDirection(elevator.Direction)
 						ClearOrdersAtCurrentFloor(elevator.Floor)
+						OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
 						elevio.SetDoorOpenLamp(true)
 						doortimer.Reset(3 * time.Second)
 						elevator.State = ES_DOOROPEN
@@ -325,6 +328,17 @@ func ClearOrdersAtCurrentFloor(floor int) {
 		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 	}
+}
+
+//Med forbehold om feil. Kan ikke returnere cabknapp
+func FromMotorDirectionToButton() elevio.ButtonType {
+	switch lastDirection {
+	case elevio.MD_Up:
+		return elevio.BT_HallUp
+	case elevio.MD_Down:
+		return elevio.BT_HallDown
+	}
+	return elevio.BT_Cab
 }
 
 func DoorTimeout() {

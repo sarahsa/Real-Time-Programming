@@ -37,8 +37,8 @@ var lights config.LightInfoPacket
 
 var OrderRegistered [4][2]bool
 
-func OrderManager(NewOrderTrans chan config.ButtonPressPacket,
-	NewOrderRecv chan config.ButtonPressPacket,
+func OrderManager(NewOrderTrans chan config.OrderPacket,
+	NewOrderRecv chan config.OrderPacket,
 	assignedOrders chan elevio.ButtonEvent,
 	doorTimeout chan bool,
 	ElevatorPacketTrans chan config.ElevatorStatusPacket,
@@ -47,8 +47,11 @@ func OrderManager(NewOrderTrans chan config.ButtonPressPacket,
 	myID string,
 	hwPort string,
 	UpdatedElevatorStatus chan config.Elevator,
-	AcknowledgementRecv chan config.NewOrderPacket,
-	AcknowledgementTrans chan config.NewOrderPacket) {
+	AckReceivedOrderRecv chan config.AcknowledgmentPacket,
+	AckReceivedOrderTrans chan config.AcknowledgmentPacket,
+	OrderIsExecuted chan elevio.ButtonEvent,
+	AckExecutedRecv chan elevio.ButtonEvent,
+	AckExecutedTrans chan elevio.ButtonEvent) {
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
@@ -56,8 +59,8 @@ func OrderManager(NewOrderTrans chan config.ButtonPressPacket,
 	go peers.Transmitter(15847, myID, peerTxEnable) //15647 , 15670
 	go peers.Receiver(15847, peerUpdateCh)          //15647
 
-	go bcast.Transmitter(23232, NewOrderTrans, ElevatorPacketTrans, AcknowledgementTrans)
-	go bcast.Receiver(23232, NewOrderRecv, ElevatorPacketRecv, AcknowledgementRecv)
+	go bcast.Transmitter(23232, NewOrderTrans, ElevatorPacketTrans, AckReceivedOrderTrans, AckExecutedTrans)
+	go bcast.Receiver(23232, NewOrderRecv, ElevatorPacketRecv, AckReceivedOrderRecv, AckExecutedRecv)
 
 	go elevio.PollButtons(ButtonPress)
 
@@ -104,12 +107,16 @@ func OrderManager(NewOrderTrans chan config.ButtonPressPacket,
 				//executer := CalculateCost(buttonPress)
 				executer := AssignOrderToRandomElevator()
 				fmt.Println("Executer = ", executer)
-				NewOrderTrans <- config.ButtonPressPacket{"Sarah", buttonPress}
+				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
 
 				//SyncInfo: Since the broadcasting happens in a separate thread. Use the
 				//obtained info to assign order.
 
 			}
+
+		case order := <-OrderIsExecuted:
+			fmt.Print("ORDER IS EXECUTED")
+			AckExecutedTrans <- order
 			//Receive the elevator information being broadcasted. It receives the updated
 			//status on this channel. Should we add all the objects in a map? If so, when a peer
 			//disappears it should also belight := false removed from this map. Maybe we could just update the elevator map.
@@ -127,11 +134,14 @@ func OrderManager(NewOrderTrans chan config.ButtonPressPacket,
 
 		case recvButtonPacket := <-NewOrderRecv:
 			fmt.Println("REceived new order")
-			AcknowledgementTrans <- config.NewOrderPacket{recvButtonPacket.Executer, recvButtonPacket.Button}
+			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
 
-		case ack := <-AcknowledgementRecv:
-			fmt.Println("Received from " + myID)
-			OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
+		case ack := <-AckReceivedOrderRecv:
+			fmt.Println("Received ack from " + ack.Sender)
+			if ack.Sender != myID {
+				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
+				elevio.SetButtonLamp((ack.Button).Button, (ack.Button).Floor, true)
+			}
 			fmt.Println("OrderRegistered: %v", OrderRegistered)
 			if ack.Executer == myID {
 				assignedOrders <- ack.Button
@@ -140,6 +150,10 @@ func OrderManager(NewOrderTrans chan config.ButtonPressPacket,
 				fmt.Println("ButtenEvent", ack.Button.Floor, ack.Button)
 				fmt.Println("-----------------------------------------")
 			}
+		case ackExecuted := <-AckExecutedRecv:
+			fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
+			fmt.Println("ackExecuted.Button: ", ackExecuted.Button)
+			elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
 
 		}
 

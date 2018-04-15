@@ -51,23 +51,27 @@ func main() {
 	UpdatedElevatorStatus := make(chan config.Elevator, 10)
 
 	//These four channels might be moved to OM
-	ButtonPacketTrans := make(chan config.ButtonPressPacket, 10)
-	ButtonPacketRecv := make(chan config.ButtonPressPacket, 10)
+	ButtonPacketTrans := make(chan config.OrderPacket, 10)
+	ButtonPacketRecv := make(chan config.OrderPacket, 10)
 
 	ElevatorPacketTrans := make(chan config.ElevatorStatusPacket, 10)
 	ElevatorPacketRecv := make(chan config.ElevatorStatusPacket, 10)
 
-	AcknowledgmentTrans := make(chan config.NewOrderPacket, 10)
-	AcknowledgmentRecv := make(chan config.NewOrderPacket, 10)
+	AckReceivedOrderTrans := make(chan config.AcknowledgmentPacket, 10)
+	AckReceivedOrderRecv := make(chan config.AcknowledgmentPacket, 10)
+
+	AckExecutedOrderTrans := make(chan elevio.ButtonEvent, 10)
+	AckExecutedOrderRecv := make(chan elevio.ButtonEvent, 10)
 
 	ButtonPress := make(chan elevio.ButtonEvent, 10)
+	OrderIsExecuted := make(chan elevio.ButtonEvent, 10)
 
 	// go Fsm.UpdateElevator(Ch_elvator)
 
 	go OrderManager.OrderManager(ButtonPacketTrans, ButtonPacketRecv, assignedOrders,
 		doorTimeout, ElevatorPacketTrans, ElevatorPacketRecv, ButtonPress, myID,
-		hwPort, UpdatedElevatorStatus, AcknowledgmentRecv, AcknowledgmentTrans)
-	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus)
+		hwPort, UpdatedElevatorStatus, AckReceivedOrderRecv, AckReceivedOrderTrans, OrderIsExecuted, AckExecutedOrderRecv, AckExecutedOrderTrans)
+	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus, OrderIsExecuted)
 
 	//fmt.Println("elevator.State: %d", elevator.State)
 	//go Fsm.Fsm(assignedOrders, floors, doorTimeout)
