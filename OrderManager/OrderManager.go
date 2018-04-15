@@ -105,8 +105,8 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 
 			} else if len(allUpdatedElevators) > 1 {
 
-				//executer := CalculateCost(buttonPress)
-				executer := AssignOrderToRandomElevator()
+				executer := CalculateCost(buttonPress)
+				//executer := AssignOrderToRandomElevator()
 				fmt.Println("Executer = ", executer)
 				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
 
@@ -246,23 +246,23 @@ func addElevator(ip string, elevator config.Elevator) {
 func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 	switch elevator.Direction {
 	case elevio.MD_Up:
-		if Fsm.IsOrderAbove(elevator.Floor) {
+		if Fsm.IsOrderAbove(elevator) {
 			return elevio.MD_Up
-		} else if Fsm.IsOrderBelow(elevator.Floor) {
+		} else if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
 		}
 		return elevio.MD_Stop
 	case elevio.MD_Down:
-		if Fsm.IsOrderBelow(elevator.Floor) {
+		if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
-		} else if Fsm.IsOrderAbove(elevator.Floor) {
+		} else if Fsm.IsOrderAbove(elevator) {
 			return elevio.MD_Up
 		}
 		return elevio.MD_Stop
 	case elevio.MD_Stop:
-		if Fsm.IsOrderAbove(elevator.Floor) {
+		if Fsm.IsOrderAbove(elevator) {
 			return elevio.MD_Up
-		} else if Fsm.IsOrderBelow(elevator.Floor) {
+		} else if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
 		}
 		return elevio.MD_Stop
@@ -274,9 +274,9 @@ func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 func requests_shouldStop(elevator config.Elevator) bool {
 	switch elevator.Direction {
 	case elevio.MD_Down:
-		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallDown] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderBelow(elevator.Floor)
+		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallDown] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderBelow(elevator)
 	case elevio.MD_Up:
-		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallUp] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderAbove(elevator.Floor)
+		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallUp] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderAbove(elevator)
 	case elevio.MD_Stop:
 		return true
 		//return Fsm.CheckOrdersAtFloor(elevator.Floor)
@@ -336,6 +336,8 @@ func request_clearAtCurrentFloor(e_old config.Elevator) config.Elevator {
 func timeToIdle(elevator config.Elevator) time.Duration {
 	duration := 0 * time.Millisecond
 
+    //fmt.Printf("  Initial state:\n    %+v\n", elevator)
+    
 	switch elevator.State {
 	case Fsm.ES_IDLE:
 		elevator.Direction = requests_chooseDirection(elevator)
@@ -357,6 +359,7 @@ func timeToIdle(elevator config.Elevator) time.Duration {
 
 	for {
 		if requests_shouldStop(elevator) {
+            //fmt.Printf("    Stopping at floor %+v\n", elevator.Floor)
 			elevator = request_clearAtCurrentFloor(elevator) //????
 			duration += DOOR_OPEN_TIME
 			elevator.Direction = requests_chooseDirection(elevator)
@@ -364,6 +367,7 @@ func timeToIdle(elevator config.Elevator) time.Duration {
 				return duration
 			}
 		}
+        //fmt.Printf("    Moving from floor %+v in dirn %+v\n", elevator.Floor, elevator.Direction)
 		elevator.Floor += int(elevator.Direction)
 		duration += TRAVEL_TIME
 	}
@@ -374,33 +378,21 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 	lowerCostID := ""
 
 	for k, e := range allUpdatedElevators {
-		fmt.Println("ELEV 1", e)
+        
 		elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests, e.LightMatrix} //??
 		elev2.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
-		fmt.Println("ELEV 2:", elev2)
+        
+		fmt.Printf("Calculating cost for %+v\n", k)
+        
 		cost := timeToIdle(elev2)
-		fmt.Println("-----------COST in FOR------------")
-		fmt.Println("LowerCost: %d", cost)
-		fmt.Println("LowerCostID: ", k)
-		fmt.Println("-----------------------------------")
-		if cost == lowerCost {
-			lowerCostID = lowestNum(lowerCostID, k)
-			fmt.Println("-----------COST------------")
-			fmt.Println("LowerCost: %d", lowerCost)
-			fmt.Println("LowerCostID: ", lowerCostID)
-			fmt.Println("-----------------------")
-		} else if cost < lowerCost {
-			lowerCost = cost
+        
+        fmt.Printf("  Cost: %d\n", cost)
+		if cost < lowerCost {
+            lowerCost = cost
 			lowerCostID = k
-			fmt.Println("-----------COST------------")
-			fmt.Println("LowerCost: %d", lowerCost)
-			fmt.Println("LowerCostID: ", lowerCostID)
-			fmt.Println("-----------------------")
 		}
-
-		fmt.Println("AFTER COST ELEV 1", e)
-		//fmt.Println(elev2)
 	}
+    fmt.Printf("Lowest cost ID: %+v\n\n", lowerCostID)
 	return lowerCostID
 }
 

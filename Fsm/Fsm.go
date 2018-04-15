@@ -158,14 +158,14 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				elevator.State = ES_MOVING
 				motortimer.Reset(10 * time.Second)
 				//Koden under her kan forenkles:
-				if CheckUpcomingFloors(elevator.Floor) {
+				if CheckUpcomingFloors(elevator) {
 					fmt.Println("inside doortimer - checkupcomingfloor")
 					elevator.Direction = lastDirection
 					elevio.SetMotorDirection(elevator.Direction)
 				} else {
 					changeDirection()
 					fmt.Println("Inside doortimer - else statement")
-					if CheckUpcomingFloors(elevator.Floor) {
+					if CheckUpcomingFloors(elevator) {
 						fmt.Println("dir = ", elevator.Direction)
 						elevio.SetMotorDirection(elevator.Direction)
 					} else {
@@ -278,23 +278,23 @@ func CheckOrdersAtFloor(floor int) bool {
 	}
 }
 
-func CheckUpcomingFloors(floor int) bool {
+func CheckUpcomingFloors(e config.Elevator) bool {
 	switch elevator.Direction {
 	case elevio.MD_Up:
-		return IsOrderAbove(floor)
+		return IsOrderAbove(e)
 	case elevio.MD_Down:
-		return IsOrderBelow(floor)
+		return IsOrderBelow(e)
 	}
 	return false
 }
 
-func IsOrderAbove(floor int) bool {
-	if floor == 3 {
+func IsOrderAbove(e config.Elevator) bool {
+	if e.Floor == 3 {
 		return false
 	}
-	for f := floor + 1; f < 4; f++ {
+	for f := e.Floor + 1; f < 4; f++ {
 		for b := 0; b < config.N_BUTTONS; b++ {
-			if elevator.AssignedRequests[f][b] {
+			if e.AssignedRequests[f][b] {
 				return true
 			}
 		}
@@ -302,13 +302,13 @@ func IsOrderAbove(floor int) bool {
 	return false
 }
 
-func IsOrderBelow(floor int) bool {
-	if floor == 0 {
+func IsOrderBelow(e config.Elevator) bool {
+	if e.Floor == 0 {
 		return false
 	}
-	for f := 0; f < floor; f++ {
+	for f := 0; f < e.Floor; f++ {
 		for b := 0; b < config.N_BUTTONS; b++ {
-			if elevator.AssignedRequests[f][b] {
+			if e.AssignedRequests[f][b] {
 				return true
 			}
 		}
@@ -325,14 +325,14 @@ func ClearOrdersAtCurrentFloor(floor int) {
 	case elevio.MD_Up:
 		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
 		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
-		if !IsOrderAbove(elevator.Floor) {
+		if !IsOrderAbove(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}
 	case elevio.MD_Down:
 		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
-		if !IsOrderBelow(elevator.Floor) {
+		if !IsOrderBelow(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}
