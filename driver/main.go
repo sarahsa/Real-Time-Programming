@@ -1,18 +1,15 @@
 package main
 
 import (
-	//"../network/network/bcast"
-	//"../network/network/peers"
 	"flag"
 	"fmt"
 	"os"
-
 	"../Fsm"
 	"../OrderManager"
 	"../config"
 	"../elevio"
 	"../network/network/localip"
-	//"../sync"
+
 )
 
 func main() {

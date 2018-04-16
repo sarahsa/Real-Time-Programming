@@ -3,24 +3,20 @@ package OrderManager
 import (
 	"fmt"
 	"math"
-
 	"../config"
 	"../elevio"
-	//"flag"
 	"../network/network/bcast"
 	"../network/network/peers"
-	// "../network/network/localip"
 	"log"
-	//"io/ioutil"
+	"io/ioutil"
 	"os"
-	"io"
 	"math/rand"
 	"time"
-
 	"strconv"
-
 	"../Fsm"
 	"../sync"
+	"strings"
+	"../backUp"
 )
 
 const (
@@ -97,7 +93,11 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 					delete(allUpdatedElevators, p.Lost[i])
 				}
 			}
-			/*
+			/*	for f := 0; f < config.N_FLOORS; f++ {
+			//order, _ := strconv.Atoi(string(buf[f]))
+		fmt.Println("assigning orders from disk", order)
+		e.AssignedRequests[f][config.BT_CAB] = ParseBool(backUpOrders)
+	}
 				//Only for debugging purposes. Prints out the map, ie. elevator.
 				for key, value := range allUpdatedElevators {
 					fmt.Println("Key: ", key, "Value: ", value)
@@ -111,9 +111,9 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			if buttonPress.Button == elevio.BT_Cab {
 				//Backup cabOrders to file
 				cabOrders[buttonPress.Floor] = true
-				saveToDisk(buttonPress, cabOrders)
+				backUp.SaveToDisk(buttonPress, cabOrders)
 				assignedOrders <- buttonPress
-				//loadFromDisk(activeElevators[myID])
+				backUp.LoadFromDisk(activeElevators[myID])
 
 			} else if len(activeElevators) > 1 {
 
@@ -152,7 +152,10 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			cabOrders[order.Floor] = false
 			saveToDisk(order, cabOrders)
 
-			AckExecutedTrans <- order
+			if order.Button != elevio.BT_Cab {
+				AckExecutedTrans <- order
+			}
+
 
 		case ackExecuted := <-AckExecutedRecv:
 			//fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
@@ -173,10 +176,10 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				}
 
 			}
-		}
+		} // select
+	} //for
 
-	}
-}
+} // ordermanagerfunc
 
 func SendOrderUntilAck(ButtonPressed chan elevio.ButtonEvent, receivedAck chan config.ReceivedAck) {
 	for {
@@ -368,8 +371,7 @@ func lowestNum(num1 string, num2 string) string {
 
 func saveToDisk(buttonPress elevio.ButtonEvent, cabOrders[config.N_FLOORS] bool){
 
-	//file, err := os.OpenFile("backup.txt", os.O_RDWR, 0644)
-	file, err := os.Create("BackUp.txt")
+	file, err := os.Create("backUp.txt")
 	fmt.Println("backup created")
 	if err != nil {
 		log.Fatal("Cannot create file", err)
@@ -377,20 +379,8 @@ func saveToDisk(buttonPress elevio.ButtonEvent, cabOrders[config.N_FLOORS] bool)
 
 	defer file.Close()
 
-	//elev := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests, e.LightMatrix} //??
-	//elev.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
-
-	/*for f := 0; f < config.N_FLOORS; f++{
-		if elev.AssignedRequests[f][config.BT_CAB] ==  true {
-			fmt.Println("AssignedOrdersCAB: ", elev.AssignedRequests[f][config.BT_CAB])
-			fmt.Println("Legger true i CabOrdersArray")
-			cabOrders[f] = true
-		}
-	}*/
-
 	for f := 0; f < config.N_FLOORS; f++ {
-		//order := strconv.FormatBool(elev.AssignedRequests[f][config.BT_CAB]) //int(e.AssignedRequests[f][config.BT_CAB])
-		order := strconv.FormatBool(cabOrders[f]) //int(e.AssignedRequests[f][config.BT_CAB])
+		order := strconv.FormatBool(cabOrders[f])
 		_ , err = file.WriteString(order)
 		_ , err = file.WriteString(" ")
 			fmt.Println("writing to file")
@@ -404,45 +394,27 @@ func saveToDisk(buttonPress elevio.ButtonEvent, cabOrders[config.N_FLOORS] bool)
 	if err != nil{ log.Fatal("Cannot create file", err) }
 }
 
-func loadFromDisk(e config.Elevator) {
+func LoadFromDisk(e config.Elevator) {
 
-/*	_, err := os.Stat("backUp.txt")
-	if err != nil{
-		log.Println("Backup file found, processing...")
-	}
-
-	file, err := ioutil.ReadFile("backUp.txt")
-		if err != nil {
+	data, err := ioutil.ReadFile("backUp.txt")
+	if err != nil {
 		log.Fatal("Failed to read from backup", err)
-		}
-	*/
-
-	file, err := os.OpenFile("backUp.txt", os.O_RDWR, 0644)
-	if err != nil{
-		log.Println("Backup file found, processing...")
 	}
+	//fmt.Println("fra load :", string(data))
 
-	buf := make([]byte, 1024)
+	 backUpOrders := string(data) // srting
+	 backUpOrdersList := strings.Split(backUpOrders, " ") // liste med string
 
-	for {
+	 for f := 0; f < config.N_FLOORS; f++ {
+			 //order, _ := strconv.Atoi(string(buf[f]))
+		 //fmt.Println(backUpOrders[f])
+		 //fmt.Println("assigning orders from disk: ", backUpOrders)
+		 fmt.Println("backUpOrdersList: ",backUpOrdersList[f])
+		 order, _ := strconv.ParseBool(backUpOrdersList[f])
+		 e.AssignedRequests[f][config.BT_CAB] = order
+	 }
 
-		_, err = file.Read(buf)
-
-		if err == io.EOF { //end of line
-			break
-		}
-		if err != nil && err != io.EOF{
-			log.Fatal("Failed to load backup: ", err)
-		}
-
-	}
-
-	for f := 0; f < config.N_FLOORS; f++ {
-		order, _ := strconv.Atoi(string(buf[f]))
-		fmt.Println("order from disk", order)
-		e.AssignedRequests[f][config.BT_CAB] = intToBool(order)
-	}
-		//fmt.Printf("New line %v \n", order)
+	fmt.Println("Loaded from disk array",e.AssignedRequests)
 }
 
 func intToBool(i int)bool  {

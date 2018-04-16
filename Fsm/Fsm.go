@@ -3,7 +3,7 @@ package Fsm
 import (
 	"fmt"
 	"time"
-
+	"../backUp"
 	"../config"
 	"../elevio"
 	//"../Map"
@@ -37,9 +37,9 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 	motortimer.Stop()
 	for {
 		//Only for debugging purposes
-		/*switch elevator.State {
+		switch elevator.State {
 		case ES_INIT:
-			fmt.Println("elevator.elevator.State: Init")
+			fmt.Println("State: Init")
 		case ES_IDLE:
 			fmt.Println("State: Idle")
 		case ES_MOVING:
@@ -66,7 +66,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			fmt.Println("LastDir: Down")
 		case elevio.MD_Stop:
 			fmt.Println("LastDir: Stop")
-		}*/
+		}
 
 		select {
 		case newOrder := <-Ch_assignedOrders:
@@ -107,11 +107,23 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			//fmt.Println("floor from reachedFloor: ", elevator.Floor)
 			switch elevator.State {
 			case ES_INIT:
-				elevio.SetMotorDirection(elevio.MD_Stop)
-				lastDirection = elevator.Direction
-				elevator.Direction = elevio.MD_Stop
-				elevator.State = ES_IDLE
-				Ch_UpdateElevatorStatus <- elevator
+				if IsOrderAbove(elevator){
+					elevator.Direction = elevio.MD_Up
+					elevator.State = ES_MOVING
+					elevio.SetMotorDirection(elevator.Direction)
+
+				}else if IsOrderBelow(elevator){
+					elevator.Direction = elevio.MD_Down
+					elevator.State = ES_MOVING
+					elevio.SetMotorDirection(elevator.Direction)
+				}else{
+
+					elevio.SetMotorDirection(elevio.MD_Stop)
+					lastDirection = elevator.Direction
+					elevator.Direction = elevio.MD_Stop
+					elevator.State = ES_IDLE
+					Ch_UpdateElevatorStatus <- elevator
+				}
 
 			case ES_MOVING:
 				fmt.Println("REset motortimer")
@@ -126,9 +138,12 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					lastDirection = elevator.Direction
 					elevator.Direction = elevio.MD_Stop
 					elevio.SetMotorDirection(elevator.Direction)
-					if (!elevator.AssignedRequests[reachedFloor][elevio.BT_Cab]) && (elevator.AssignedRequests[reachedFloor][elevio.BT_HallUp] || elevator.AssignedRequests[reachedFloor][elevio.BT_HallDown]) {
-						OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
+					if (elevator.AssignedRequests[reachedFloor][elevio.BT_Cab]) && !(elevator.AssignedRequests[reachedFloor][elevio.BT_HallUp] || elevator.AssignedRequests[reachedFloor][elevio.BT_HallDown]) {
+						OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, elevio.BT_Cab}
 					}
+
+					OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
+
 					ClearOrdersAtCurrentFloor(elevator.Floor)
 					elevio.SetDoorOpenLamp(true)
 					doortimer.Reset(3 * time.Second)
@@ -197,6 +212,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				}
 			} else {
 				elevator.State = ES_IDLE
+				motortimer.Stop()
 			}
 		case <-motortimer.C:
 			fmt.Println("Motor timed out")
@@ -222,13 +238,19 @@ func Init() {
 			elevio.SetButtonLamp(b, f, false)
 		}
 	}
-
+	elevator = backUp.LoadFromDisk(elevator)
+	for f := 0; f < config.N_FLOORS; f++ {
+		if elevator.AssignedRequests[f][elevio.BT_Cab] == true {
+			elevio.SetButtonLamp(elevio.BT_Cab,f,true)
+		}
+	}
 	if elevio.GetFloor() == -1 {
 		elevio.SetMotorDirection(elevio.MD_Up)
 		elevator.Direction = elevio.MD_Up
 	} else {
 		elevator.Floor = elevio.GetFloor()
 	}
+
 
 }
 
@@ -366,6 +388,7 @@ func ClearOrdersAtCurrentFloor(floor int) {
 	case elevio.MD_Up:
 		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
 		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
+		fmt.Println("ClearOrders: Case MD_UP")
 		if !IsOrderAbove(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
@@ -373,6 +396,7 @@ func ClearOrdersAtCurrentFloor(floor int) {
 	case elevio.MD_Down:
 		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
+		fmt.Println("ClearOrders: Case MD_Down")
 		if !IsOrderBelow(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
