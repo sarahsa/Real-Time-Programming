@@ -74,7 +74,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 	//go SendOrderUntilAck(ButtonPress, received)
 
 	for {
-		//sync.SyncAllLights(OrderRegistered)
 		select {
 		case p := <-peerUpdateCh:
 			fmt.Printf("Peer update:\n")
