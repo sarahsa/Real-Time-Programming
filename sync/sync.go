@@ -21,9 +21,8 @@ func SendElevatorUpdate(elevator config.Elevator,
 			elevator = updatedElevator
 			//broadcast
 			ElevatorPacketTrans <- config.ElevatorStatusPacket{myID, elevator}
-		default:
 			//Not sure if this works. The channel might lock the code here.
-			<-time.After(time.Millisecond * 2000)
+		case <-time.After(time.Millisecond * 2000):
 			//broadcast
 			ElevatorPacketTrans <- config.ElevatorStatusPacket{myID, elevator}
 

@@ -25,7 +25,8 @@ var floors = make(chan int)
 func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 	Ch_DoorTimeout chan bool,
 	Ch_UpdateElevatorStatus chan config.Elevator,
-	OrderIsExecuted chan elevio.ButtonEvent) {
+	OrderIsExecuted chan elevio.ButtonEvent,
+	MotorTimedOut chan config.OrderMatrix) {
 
 	Init()
 	go elevio.PollFloorSensor(floors)
@@ -143,7 +144,9 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					}
 				}
 			case ES_STUCK:
-				Init()
+				//1) Stoppe HEIS
+				//2) Loade ordre fra backup
+				//3) Legge den til som "aktiv heis"
 
 			default:
 				fmt.Println("ERROR. Reaching floor with unknown state")
@@ -158,14 +161,14 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				elevator.State = ES_MOVING
 				motortimer.Reset(10 * time.Second)
 				//Koden under her kan forenkles:
-				if CheckUpcomingFloors(elevator.Floor) {
+				if CheckUpcomingFloors(elevator) {
 					fmt.Println("inside doortimer - checkupcomingfloor")
 					elevator.Direction = lastDirection
 					elevio.SetMotorDirection(elevator.Direction)
 				} else {
 					changeDirection()
 					fmt.Println("Inside doortimer - else statement")
-					if CheckUpcomingFloors(elevator.Floor) {
+					if CheckUpcomingFloors(elevator) {
 						fmt.Println("dir = ", elevator.Direction)
 						elevio.SetMotorDirection(elevator.Direction)
 					} else {
@@ -178,8 +181,9 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			}
 		case <-motortimer.C:
 			fmt.Println("Motor timed out")
-			elevio.SetMotorDirection(elevio.MD_Stop)
-			Init()
+			MotorTimedOut <- config.OrderMatrix{elevator.AssignedRequests}
+			//clearOrdre
+			//Init()
 
 		}
 	}
@@ -278,23 +282,23 @@ func CheckOrdersAtFloor(floor int) bool {
 	}
 }
 
-func CheckUpcomingFloors(floor int) bool {
+func CheckUpcomingFloors(e config.Elevator) bool {
 	switch elevator.Direction {
 	case elevio.MD_Up:
-		return IsOrderAbove(floor)
+		return IsOrderAbove(e)
 	case elevio.MD_Down:
-		return IsOrderBelow(floor)
+		return IsOrderBelow(e)
 	}
 	return false
 }
 
-func IsOrderAbove(floor int) bool {
-	if floor == 3 {
+func IsOrderAbove(e config.Elevator) bool {
+	if e.Floor == 3 {
 		return false
 	}
-	for f := floor + 1; f < 4; f++ {
+	for f := e.Floor + 1; f < 4; f++ {
 		for b := 0; b < config.N_BUTTONS; b++ {
-			if elevator.AssignedRequests[f][b] {
+			if e.AssignedRequests[f][b] {
 				return true
 			}
 		}
@@ -302,13 +306,13 @@ func IsOrderAbove(floor int) bool {
 	return false
 }
 
-func IsOrderBelow(floor int) bool {
-	if floor == 0 {
+func IsOrderBelow(e config.Elevator) bool {
+	if e.Floor == 0 {
 		return false
 	}
-	for f := 0; f < floor; f++ {
+	for f := 0; f < e.Floor; f++ {
 		for b := 0; b < config.N_BUTTONS; b++ {
-			if elevator.AssignedRequests[f][b] {
+			if e.AssignedRequests[f][b] {
 				return true
 			}
 		}
@@ -325,14 +329,14 @@ func ClearOrdersAtCurrentFloor(floor int) {
 	case elevio.MD_Up:
 		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
 		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
-		if !IsOrderAbove(elevator.Floor) {
+		if !IsOrderAbove(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}
 	case elevio.MD_Down:
 		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
-		if !IsOrderBelow(elevator.Floor) {
+		if !IsOrderBelow(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
 			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}

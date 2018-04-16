@@ -66,12 +66,14 @@ func main() {
 	ButtonPress := make(chan elevio.ButtonEvent, 10)
 	OrderIsExecuted := make(chan elevio.ButtonEvent, 10)
 
+	MotorTimedOut := make(chan config.OrderMatrix, 10)
+
 	// go Fsm.UpdateElevator(Ch_elvator)
 
 	go OrderManager.OrderManager(ButtonPacketTrans, ButtonPacketRecv, assignedOrders,
 		doorTimeout, ElevatorPacketTrans, ElevatorPacketRecv, ButtonPress, myID,
-		hwPort, UpdatedElevatorStatus, AckReceivedOrderRecv, AckReceivedOrderTrans, OrderIsExecuted, AckExecutedOrderRecv, AckExecutedOrderTrans)
-	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus, OrderIsExecuted)
+		hwPort, UpdatedElevatorStatus, AckReceivedOrderRecv, AckReceivedOrderTrans, OrderIsExecuted, AckExecutedOrderRecv, AckExecutedOrderTrans, MotorTimedOut)
+	go Fsm.Fsm(assignedOrders, doorTimeout, UpdatedElevatorStatus, OrderIsExecuted, MotorTimedOut)
 
 	//fmt.Println("elevator.State: %d", elevator.State)
 	//go Fsm.Fsm(assignedOrders, floors, doorTimeout)

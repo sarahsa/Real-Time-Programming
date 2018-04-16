@@ -31,6 +31,8 @@ const (
 //This map might be unnecessary, because its almost the same as the one above
 var allUpdatedElevators = make(map[string]config.Elevator)
 
+var activeElevators = make(map[string]config.Elevator)
+
 var TestElevatorID []string
 
 var lights config.LightInfoPacket
@@ -51,7 +53,8 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 	AckReceivedOrderTrans chan config.AcknowledgmentPacket,
 	OrderIsExecuted chan elevio.ButtonEvent,
 	AckExecutedRecv chan elevio.ButtonEvent,
-	AckExecutedTrans chan elevio.ButtonEvent) {
+	AckExecutedTrans chan elevio.ButtonEvent,
+	MotorTimedOut chan config.OrderMatrix) {
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
@@ -81,6 +84,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			if p.New != "" {
 				TestElevatorID = append(TestElevatorID, p.New)
 				addElevator(p.New, Fsm.GetElevatorStatus())
+				activeElevators[p.New] = allUpdatedElevators[p.New]
 			}
 
 			if len(p.Lost) != 0 {
@@ -103,38 +107,17 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				//Backup cabOrders to file
 				assignedOrders <- buttonPress
 
-			} else if len(allUpdatedElevators) > 1 {
+			} else if len(activeElevators) > 1 {
 
-				//executer := CalculateCost(buttonPress)
-				executer := AssignOrderToRandomElevator()
+				executer := CalculateCost(buttonPress)
+				//executer := AssignOrderToRandomElevator()
 				fmt.Println("Executer = ", executer)
 				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
-
-				//SyncInfo: Since the broadcasting happens in a separate thread. Use the
-				//obtained info to assign order.
 
 			}
 		case recvButtonPacket := <-NewOrderRecv:
 			fmt.Println("REceived new order")
 			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
-
-		case order := <-OrderIsExecuted:
-			fmt.Print("ORDER IS EXECUTED")
-			AckExecutedTrans <- order
-			//Receive the elevator information being broadcasted. It receives the updated
-			//status on this channel. Should we add all the objects in a map? If so, when a peer
-			//disappears it should also belight := false removed from this map. Maybe we could just update the elevator map.
-			//What about MotorTimeout??
-		case updatedElevator := <-ElevatorPacketRecv:
-			//fmt.Println("updatedElevator_id: ", updatedElevator.ID)
-			allUpdatedElevators[updatedElevator.ID] = updatedElevator.ElevatorStatus
-
-			//debugging purposes
-			/*
-				for key, value := range allUpdatedElevators {
-					fmt.Println("allUpdatedElevators: ")
-					fmt.Println("Key: ", key, "Value: ", value)
-				}*/
 
 		case ack := <-AckReceivedOrderRecv:
 			fmt.Println("Received ack from " + ack.Sender)
@@ -151,12 +134,30 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				fmt.Println("ButtenEvent", ack.Button.Floor, ack.Button)
 				fmt.Println("-----------------------------------------")
 			}
+
+		case order := <-OrderIsExecuted:
+			fmt.Print("ORDER IS EXECUTED")
+			AckExecutedTrans <- order
+
 		case ackExecuted := <-AckExecutedRecv:
 			fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
 			fmt.Println("ackExecuted.Button: ", ackExecuted.Button)
 			elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
 			OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
 
+		case updatedElevator := <-ElevatorPacketRecv:
+			allUpdatedElevators[updatedElevator.ID] = updatedElevator.ElevatorStatus
+
+		case reassignOrders := <-MotorTimedOut:
+
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_BUTTONS-1; b++ {
+					if reassignOrders.AssignedOrders[f][b] {
+						ButtonPress <- elevio.ButtonEvent{f, elevio.ButtonType(b)}
+					}
+				}
+
+			}
 		}
 
 	}
@@ -246,23 +247,23 @@ func addElevator(ip string, elevator config.Elevator) {
 func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 	switch elevator.Direction {
 	case elevio.MD_Up:
-		if Fsm.IsOrderAbove(elevator.Floor) {
+		if Fsm.IsOrderAbove(elevator) {
 			return elevio.MD_Up
-		} else if Fsm.IsOrderBelow(elevator.Floor) {
+		} else if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
 		}
 		return elevio.MD_Stop
 	case elevio.MD_Down:
-		if Fsm.IsOrderBelow(elevator.Floor) {
+		if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
-		} else if Fsm.IsOrderAbove(elevator.Floor) {
+		} else if Fsm.IsOrderAbove(elevator) {
 			return elevio.MD_Up
 		}
 		return elevio.MD_Stop
 	case elevio.MD_Stop:
-		if Fsm.IsOrderAbove(elevator.Floor) {
+		if Fsm.IsOrderAbove(elevator) {
 			return elevio.MD_Up
-		} else if Fsm.IsOrderBelow(elevator.Floor) {
+		} else if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
 		}
 		return elevio.MD_Stop
@@ -274,9 +275,9 @@ func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 func requests_shouldStop(elevator config.Elevator) bool {
 	switch elevator.Direction {
 	case elevio.MD_Down:
-		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallDown] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderBelow(elevator.Floor)
+		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallDown] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderBelow(elevator)
 	case elevio.MD_Up:
-		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallUp] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderAbove(elevator.Floor)
+		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallUp] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderAbove(elevator)
 	case elevio.MD_Stop:
 		return true
 		//return Fsm.CheckOrdersAtFloor(elevator.Floor)
