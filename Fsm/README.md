@@ -3,13 +3,13 @@
 
 This module uses states from config. 
 
-|  States   | 
-| --------- |
-| ES_INIT   | 
-| ES_IDLE   | 
-|ES_MOVING  |            
-|ES_DOOROPEN|
-|ES_STUCK   |
+|  States   | Event        |
+| --------- |---------     |
+| ES_INIT   | newOrder     |
+| ES_IDLE   | reachedFloor |
+|ES_MOVING  | doortimer    |      
+|ES_DOOROPEN| motortimer   |
+|ES_STUCK   |              |   
 
 
 
