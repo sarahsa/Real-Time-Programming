@@ -35,7 +35,7 @@ var activeElevators = make(map[string]config.Elevator)
 
 var TestElevatorID []string
 
-var lights config.LightInfoPacket
+//var lights config.LightInfoPacket
 
 var OrderRegistered [4][2]bool
 
@@ -58,6 +58,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
+	received := make(chan config.ReceivedAck)
 
 	go peers.Transmitter(15847, myID, peerTxEnable) //15647 , 15670
 	go peers.Receiver(15847, peerUpdateCh)          //15647
@@ -71,6 +72,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 		UpdatedElevatorStatus,
 		ElevatorPacketTrans,
 		myID)
+	go SendOrderUntilAck(ButtonPress, received)
 
 	for {
 		//sync.SyncAllLights(OrderRegistered)
@@ -115,11 +117,13 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
 
 			}
+			received <- config.ReceivedAck{buttonPress, false}
 		case recvButtonPacket := <-NewOrderRecv:
 			fmt.Println("REceived new order")
 			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
 
 		case ack := <-AckReceivedOrderRecv:
+			received <- config.ReceivedAck{ack.Button, true}
 			fmt.Println("Received ack from " + ack.Sender)
 			if ack.Sender != myID {
 				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
@@ -149,10 +153,10 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			allUpdatedElevators[updatedElevator.ID] = updatedElevator.ElevatorStatus
 
 		case reassignOrders := <-MotorTimedOut:
-
 			for f := 0; f < config.N_FLOORS; f++ {
 				for b := 0; b < config.N_BUTTONS-1; b++ {
 					if reassignOrders.AssignedOrders[f][b] {
+						fmt.Println("Reassigning")
 						ButtonPress <- elevio.ButtonEvent{f, elevio.ButtonType(b)}
 					}
 				}
@@ -163,44 +167,20 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 	}
 }
 
-/*func printInfo(e config.Elevator) {
-	fmt.Println("HEIS INFO")
-	fmt.Println("Floor ", e.Floor)
-	fmt.Println("State ", e.State)
-	fmt.Println("Direction ", e.Direction)
-	fmt.Println("Order ", e.AssignedRequests)
-}*/
-
-/*func ManageOldElevator(key string, pos elevio.ButtonEvent, value bool) {
-	for k, v := range oldElevators {
-		if k == key {
-			v.AssignedOrders[pos.Floor][int(pos.Button)] = value
-		}
-	}
-}
-
-func ClearOrder() {
-	light := false
-	for f := 0; f < config.N_FLOORS; f++ {
-		for b := 0; b < config.N_BUTTONS-1; b++ {
-			if LightMatrix[f][b] {
-				for k, v := range allUpdatedElevators {
-					if v.AssignedRequests[f][b] {
-						light = true
-					}
-					button := elevio.ButtonEvent{f, elevio.ButtonType(b)}
-					ManageOldElevator(k, button, false)
-				}
-				if light == false {
-					elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
-					LightMatrix[f][b] = false
-				} else {
-					light = false
-				}
+func SendOrderUntilAck(ButtonPressed chan elevio.ButtonEvent, receivedAck chan config.ReceivedAck) {
+	for {
+		select {
+		case recAck := <-receivedAck:
+			//Do not send anymore
+			if recAck.Status == false {
+				ButtonPressed <- recAck.Button
 			}
+			//case <-time.After(time.Millisecond * 2000):
+
 		}
 	}
-}*/
+
+}
 
 func IsElevatorNearest(myID string) bool {
 	myCost := timeToIdle(allUpdatedElevators[myID])
@@ -236,13 +216,6 @@ func addElevator(ip string, elevator config.Elevator) {
 		allUpdatedElevators[ip] = elevator
 	}
 }
-
-/*func addLightMatrix(ip string, matrix[4][3]bool]) {
-	_, ok := activeElevators[ip]
-	if ok == false {
-		activeElevators[ip] = matrix
-	}
-}*/
 
 func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 	switch elevator.Direction {
@@ -298,41 +271,6 @@ func request_clearAtCurrentFloor(e_old config.Elevator) config.Elevator {
 	}
 	return e
 }
-
-/*func request_clearAtCurrentFloor(elev chan config.Elevator) Elevator {
-    switch elev.config.onClearedRequestVariant {
-    case CV_ALL:
-        for btn Button := 0; btn < N_BUTTONS; btn++  {
-            e.AssignedRequests[e.Floor][btn] = 0
-        }
-        break
-    case CV_InDirn:
-        e.AssignedRequests[e.Floor][BT_CAB] = 0
-        switch e.dirn {
-        case D_Up:
-            e.AssignedRequests[e.Floor][B_HallUp] = 0
-            if !Fsm.IsOrderAbove(e) {
-                e.AssignedRequests[e.Floor][B_HallDown] = 0
-            }
-            break
-        case D_Down:
-            e.AssignedRequests[e.Floor][B_HallDown] = 0
-            if (!Fsm.IsOrderBelow(e)) {
-                e.AssignedRequests[e.Floor][B_HallUp] = 0
-            }
-            break
-        case D_Stop:
-        configault:
-            e.AssignedRequests[e.Floor][B_HallUp] = 0
-            e.AssignedRequests[e.Floor][B_HallDown] = 0
-            break
-        }
-        break
-    configault:
-        break
-    }
-    return e
-}*/
 
 func timeToIdle(elevator config.Elevator) time.Duration {
 	duration := 0 * time.Millisecond
@@ -417,31 +355,6 @@ func lowestNum(num1 string, num2 string) string {
 
 //-----------------------------------------------------------------------------------------------------
 
-/*func executeOrder(buttonPress elevio.ButtonEvent, ) bool {
-
-    cost := testCost()
-    if (cost == true){
-        AddOrder(buttonPress)
-        return true
-    }else{
-      return false
-    }
-}*/
-
-//maa sammenligne kostene og legge til ordren dersom kosten returnerer true
-/*func AddOrder(buttonPress elevio.ButtonEvent) bool {
-
-    if (ExecuteOrders[buttonPress.Floor][buttonPress.Button] == false){
-        ExecuteOrders[buttonPress.Floor][buttonPress.Button] = true
-        return true
-    }
-    return false
-}*/
-
-/*func testCost() bool {
-  return true
-}*/
-
 /*func saveToDisk(filname string) error{
 
 	data, err := jason.Marshal( []byte, error )
@@ -478,99 +391,3 @@ func lowestNum(num1 string, num2 string) string {
     return nil
 
 }*/
-
-//-----------------------------------------------------------------------------------------------------
-
-// COST
-
-//the cost for a single elevator (MORTENFYHN)
-/*func cost(buttonPress elevio.ButtonEvent, e Elevator) int {
-
-    cost := 0
-    floor := e.floor
-    dir :=  e.dir
-    targetfloor := buttonPress.Floor
-
-    if floor == -1 { //between floors
-        cost++
-    }
-
-    else if Fsm.State != elevio.MD_Stop {
-        cost += 2
-    }
-
-    floor, dir = incrementFloor(floor, dir)
-
-    //simulates the elevator cost until it reaches the target floorm max 10 simulations
-    for n := 0; !(floor == targetfloor && CheckOrdersAtFloor(floor)) && n < 10; n++ {
-        if  Fsm.CheckOrdersAtFloor(floor){
-            cost += 2
-            elevio.SetButtonLamp(BT_HallDown, floor, false)
-            elevio.SetButtonLamp(BT_HallUp, floor, false)
-            elevio.SetButtonLamp(BT_Cab, false)
-            elevio.SetDoorOpenLamp(true)
-        }
-        dir = chooseDirection(floor, dir)
-        floor, dir = incrementFloor(floor, dir)
-        cost += 2
-    }
-
-    return cost
-} */
-/*func incrementFloor(floor int, dir int) (int, int) {
-
-    switch dir {
-    case elevio.MD_Down:
-            floor--
-        case elevio.MD_Up:
-            floor++
-    }
-
-    if floor <= 0 && dir == elevoi.MD_Down{
-        dir = elevio.MD_Up
-        floor = 0
-    }
-
-    if floor >= NumFloors - 1 && dir == elevoi.MD_Up{
-        dir = elevio.MD_Down
-        floor = NumFloors - 1
-    }
-    return floor, dir
-}*/
-
-/*func request_clearAtCurrentFloor(elev chan config.Elevator) Elevator {
-    switch elev.config.onClearedRequestVariant {
-    case CV_ALL:
-        for btn Button := 0; btn < N_BUTTONS; btn++  {
-            e.AssignedRequests[e.Floor][btn] = 0
-        }
-        break
-    case CV_InDirn:
-        e.AssignedRequests[e.Floor][BT_CAB] = 0
-        switch e.dirn {
-        case D_Up:
-            e.AssignedRequests[e.Floor][B_HallUp] = 0
-            if !Fsm.IsOrderAbove(e) {
-                e.AssignedRequests[e.Floor][B_HallDown] = 0
-            }
-            break
-        case D_Down:
-            e.AssignedRequests[e.Floor][B_HallDown] = 0
-            if (!Fsm.IsOrderBelow(e)) {
-                e.AssignedRequests[e.Floor][B_HallUp] = 0
-            }
-            break
-        case D_Stop:
-        configault:
-            e.AssignedRequests[e.Floor][B_HallUp] = 0
-            e.AssignedRequests[e.Floor][B_HallDown] = 0
-            break
-        }
-        break
-    configault:
-        break
-    }
-    return e
-}*/
-
-//NEED TO BE FIXED, void delegate(CallType c) onClearedRequest = null

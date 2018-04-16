@@ -48,7 +48,7 @@ type OrderMatrix struct {
 	AssignedOrders [N_FLOORS][N_BUTTONS]bool
 }
 
-type LightInfoPacket struct {
+type ReceivedAck struct {
 	Button elevio.ButtonEvent
 	Status bool
 }

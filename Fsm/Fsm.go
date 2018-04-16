@@ -18,7 +18,8 @@ const (
 )
 
 var elevator config.Elevator
-var lights config.LightInfoPacket
+
+//var lights config.LightInfoPacket
 var lastDirection elevio.MotorDirection //Kan hende denne er unødvendig
 var floors = make(chan int)
 
@@ -45,6 +46,8 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			fmt.Println("State: Moving")
 		case ES_DOOROPEN:
 			fmt.Println("State: DoorOpen")
+		case ES_STUCK:
+			fmt.Println("State: stuck")
 		}
 
 		switch elevator.Direction {
@@ -144,6 +147,20 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					}
 				}
 			case ES_STUCK:
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				if CheckOrdersAtFloor(reachedFloor) {
+					lastDirection = elevator.Direction
+					elevator.Direction = elevio.MD_Stop
+					elevio.SetMotorDirection(elevio.MD_Stop)
+
+				}
+				if CheckIfAnyOrders() {
+					elevator.State = ES_MOVING
+					elevio.SetMotorDirection(elevator.Direction)
+				} else {
+					elevator.State = ES_IDLE
+				}
+
 				//1) Stoppe HEIS
 				//2) Loade ordre fra backup
 				//3) Legge den til som "aktiv heis"
@@ -159,7 +176,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			if CheckIfAnyOrders() {
 				elevator.Direction = lastDirection
 				elevator.State = ES_MOVING
-				motortimer.Reset(10 * time.Second)
+				motortimer.Reset(5 * time.Second)
 				//Koden under her kan forenkles:
 				if CheckUpcomingFloors(elevator) {
 					fmt.Println("inside doortimer - checkupcomingfloor")
@@ -182,6 +199,8 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 		case <-motortimer.C:
 			fmt.Println("Motor timed out")
 			MotorTimedOut <- config.OrderMatrix{elevator.AssignedRequests}
+			clearHallOrders()
+			elevator.State = ES_STUCK
 			//clearOrdre
 			//Init()
 
@@ -209,6 +228,14 @@ func Init() {
 		elevator.Floor = elevio.GetFloor()
 	}
 
+}
+
+func clearHallOrders() {
+	for f := 0; f < config.N_FLOORS; f++ {
+		for b := 0; b < config.N_BUTTONS-1; b++ {
+			elevator.AssignedRequests[f][b] = false
+		}
+	}
 }
 
 //returner true dersom ordren er lagt til, false ellers
