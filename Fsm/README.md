@@ -3,7 +3,7 @@
 
 This module uses states from config. 
 
-|  States   | Event        |
+|  States   | Events        |
 | --------- |---------     |
 | ES_INIT   | newOrder     |
 | ES_IDLE   | reachedFloor |
