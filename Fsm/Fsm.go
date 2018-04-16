@@ -126,8 +126,10 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					lastDirection = elevator.Direction
 					elevator.Direction = elevio.MD_Stop
 					elevio.SetMotorDirection(elevator.Direction)
+					if (!elevator.AssignedRequests[reachedFloor][elevio.BT_Cab]) && (elevator.AssignedRequests[reachedFloor][elevio.BT_HallUp] || elevator.AssignedRequests[reachedFloor][elevio.BT_HallDown]) {
+						OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
+					}
 					ClearOrdersAtCurrentFloor(elevator.Floor)
-					OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
 					elevio.SetDoorOpenLamp(true)
 					doortimer.Reset(3 * time.Second)
 					elevator.State = ES_DOOROPEN
@@ -290,6 +292,14 @@ func CheckIfAnyOrders() bool {
 		}
 	}
 	return false
+}
+
+func CheckIfAnyHallOrders()  {
+	//
+}
+
+func CheckIfAnyCabOrders(){
+	//
 }
 
 func CheckOrdersAtFloor(floor int) bool {

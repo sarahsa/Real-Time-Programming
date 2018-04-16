@@ -36,7 +36,7 @@ var activeElevators = make(map[string]config.Elevator)
 
 var TestElevatorID []string
 
-var cabOrders [config.N_FLOORS]bool //save CabOrders
+var cabOrders[config.N_FLOORS]bool //save CabOrders
 
 //var lights config.LightInfoPacket
 
@@ -151,7 +151,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			fmt.Println("Setting Caborder to false") // MÅ FIKSES
 			cabOrders[order.Floor] = false
 			saveToDisk(order, cabOrders)
-		
+
 			AckExecutedTrans <- order
 
 		case ackExecuted := <-AckExecutedRecv:
