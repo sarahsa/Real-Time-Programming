@@ -88,20 +88,23 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				activeElevators[p.New] = allUpdatedElevators[p.New]
 			}
 
-			if len(p.Lost) != 0 {
+
+			if len(p.Lost) ==1 && len(p.Peers) > 1 {
 				for i := range p.Lost {
-					delete(allUpdatedElevators, p.Lost[i])
+					fmt.Println("p.Lost= ", p.Lost[i])
+					for f := 0; f < config.N_FLOORS; f++ {
+						for b := 0; b < config.N_BUTTONS; b++ {
+							fmt.Println("activeElevators[p.Lost[i]].AssignedRequests[f][b]= ", activeElevators[p.Lost[i]].AssignedRequests[f][b])
+							if allUpdatedElevators[p.Lost[i]].AssignedRequests[f][b] == true{
+								fmt.Println("CHECK")
+								ButtonPress <- elevio.ButtonEvent{f, elevio.ButtonType(b)}
+
+							}
+						}
+					}
+				delete(allUpdatedElevators, p.Lost[i])
 				}
 			}
-			/*	for f := 0; f < config.N_FLOORS; f++ {
-			//order, _ := strconv.Atoi(string(buf[f]))
-		fmt.Println("assigning orders from disk", order)
-		e.AssignedRequests[f][config.BT_CAB] = ParseBool(backUpOrders)
-	}
-				//Only for debugging purposes. Prints out the map, ie. elevator.
-				for key, value := range allUpdatedElevators {
-					fmt.Println("Key: ", key, "Value: ", value)
-				}*/
 
 		case buttonPress := <-ButtonPress:
 			fmt.Println("Button press at " + myID)
