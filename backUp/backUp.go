@@ -53,7 +53,7 @@ func LoadFromDisk(e config.Elevator)config.Elevator{
 		 //fmt.Println("assigning orders from disk: ", backUpOrders)
 		 fmt.Println("backUpOrdersList: ",backUpOrdersList[f])
 		 order, _ := strconv.ParseBool(backUpOrdersList[f])
-		 e.AssignedRequests[f][config.BT_CAB] = order
+		 e.AssignedRequests[f][elevio.BT_Cab] = order
 	 }
 	fmt.Println("Loaded from disk array",e.AssignedRequests)
 	return e

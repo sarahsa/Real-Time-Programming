@@ -10,19 +10,12 @@ import (
 	"log"
 	"io/ioutil"
 	"os"
-	"math/rand"
 	"time"
 	"strconv"
 	"../Fsm"
 	"../sync"
 	"strings"
 	"../backUp"
-)
-
-const (
-	DOOR_OPEN_TIME time.Duration = 3000
-	TRAVEL_TIME    time.Duration = 2500
-	includeCab     bool          = false
 )
 
 //This map might be unnecessary, because its almost the same as the one above
@@ -35,7 +28,6 @@ var TestElevatorID []string
 var cabOrders[config.N_FLOORS]bool //save CabOrders
 
 //var lights config.LightInfoPacket
-
 var OrderRegistered [4][2]bool
 
 func OrderManager(NewOrderTrans chan config.OrderPacket,
@@ -71,6 +63,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 		UpdatedElevatorStatus,
 		ElevatorPacketTrans,
 		myID)
+	//go sync.SyncAllLights(OrderRegistered)
 	//go SendOrderUntilAck(ButtonPress, received)
 
 	for {
@@ -125,13 +118,10 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
 
 			}
-			//received <- config.ReceivedAck{buttonPress, false}
 		case recvButtonPacket := <-NewOrderRecv:
-			fmt.Println("REceived new order")
 			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
 
 		case ack := <-AckReceivedOrderRecv:
-			//received <- config.ReceivedAck{ack.Button, true}
 			fmt.Println("Received ack from " + ack.Sender)
 			if ack.Sender != myID {
 				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
@@ -141,16 +131,9 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			fmt.Println("OrderRegistered: %v", OrderRegistered)
 			if ack.Executer == myID {
 				assignedOrders <- ack.Button
-				fmt.Println("-------------- BUTTON -------------------")
-				fmt.Println("Exceuter ", ack.Executer)
-				fmt.Println("ButtenEvent", ack.Button.Floor, ack.Button)
-				fmt.Println("-----------------------------------------")
 			}
 
 		case order := <-OrderIsExecuted:
-			fmt.Println("ORDER IS EXECUTED")
-			fmt.Println("Orderbutton: ", order.Button)
-			fmt.Println("Setting Caborder to false") // MÅ FIKSES
 			cabOrders[order.Floor] = false
 			saveToDisk(order, cabOrders)
 
@@ -158,10 +141,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				AckExecutedTrans <- order
 			}
 
-
 		case ackExecuted := <-AckExecutedRecv:
-			//fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
-			fmt.Println("ackExecuted.Button: ", ackExecuted.Button)
 			elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
 			OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
 
@@ -172,7 +152,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			for f := 0; f < config.N_FLOORS; f++ {
 				for b := 0; b < config.N_BUTTONS-1; b++ {
 					if reassignOrders.AssignedOrders[f][b] {
-						fmt.Println("Reassigning")
 						ButtonPress <- elevio.ButtonEvent{f, elevio.ButtonType(b)}
 					}
 				}
@@ -180,51 +159,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			}
 		} // select
 	} //for
-
 } // ordermanagerfunc
-
-func SendOrderUntilAck(ButtonPressed chan elevio.ButtonEvent, receivedAck chan config.ReceivedAck) {
-	for {
-		select {
-		case recAck := <-receivedAck:
-			//Do not send anymore
-			if recAck.Status == false {
-				ButtonPressed <- recAck.Button
-			}
-			//case <-time.After(time.Millisecond * 2000):
-
-		}
-	}
-
-}
-
-func IsElevatorNearest(myID string) bool {
-	myCost := timeToIdle(allUpdatedElevators[myID])
-
-	for k := range allUpdatedElevators {
-		if k != myID {
-			cost := timeToIdle(allUpdatedElevators[k])
-			if cost < myCost {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
-func FindNearestElevator(myID string) string {
-	return "no"
-
-}
-
-func AssignOrderToRandomElevator() string {
-	rand.Seed(time.Now().Unix())
-	randomElev := TestElevatorID[rand.Intn(len(TestElevatorID))]
-	fmt.Println("The elevator chosen is: %s", randomElev)
-	return randomElev
-
-}
 
 func addElevator(ip string, elevator config.Elevator) {
 	_, ok := allUpdatedElevators[ip]
@@ -269,7 +204,6 @@ func requests_shouldStop(elevator config.Elevator) bool {
 		return elevator.AssignedRequests[elevator.Floor][elevio.BT_HallUp] || elevator.AssignedRequests[elevator.Floor][elevio.BT_Cab] || !Fsm.IsOrderAbove(elevator)
 	case elevio.MD_Stop:
 		return true
-		//return Fsm.CheckOrdersAtFloor(elevator.Floor)
 	default:
 		return true
 	}
@@ -280,9 +214,6 @@ func request_clearAtCurrentFloor(e_old config.Elevator) config.Elevator {
 	for btn := 0; btn < config.N_BUTTONS; btn++ {
 		if e.AssignedRequests[e.Floor][btn] {
 			e.AssignedRequests[e.Floor][btn] = false
-			/*if (onClearedRequest){
-			    onClearedRequest(b)
-			}*/
 		}
 	}
 	return e
@@ -292,35 +223,34 @@ func timeToIdle(elevator config.Elevator) time.Duration {
 	duration := 0 * time.Millisecond
 
 	switch elevator.State {
-	case Fsm.ES_IDLE:
+	case config.ES_IDLE:
 		elevator.Direction = requests_chooseDirection(elevator)
 		if elevator.Direction == elevio.MD_Stop {
 			return duration
 		}
-	case Fsm.ES_MOVING:
+	case config.ES_MOVING:
 		elevator.Floor += int(elevator.Direction)
-		duration += TRAVEL_TIME / 2
+		duration += config.TRAVEL_TIME / 2
 
-	case Fsm.ES_DOOROPEN:
-		duration -= DOOR_OPEN_TIME / 2
+	case config.ES_DOOROPEN:
+		duration -= config.DOOR_OPEN_TIME / 2
 		elevator.Direction = requests_chooseDirection(elevator)
 		if elevator.Direction == elevio.MD_Stop {
 			return duration
 		}
-
 	}
 
 	for {
 		if requests_shouldStop(elevator) {
-			elevator = request_clearAtCurrentFloor(elevator) //????
-			duration += DOOR_OPEN_TIME
+			elevator = request_clearAtCurrentFloor(elevator)
+			duration += config.DOOR_OPEN_TIME
 			elevator.Direction = requests_chooseDirection(elevator)
 			if elevator.Direction == elevio.MD_Stop {
 				return duration
 			}
 		}
 		elevator.Floor += int(elevator.Direction)
-		duration += TRAVEL_TIME
+		duration += config.TRAVEL_TIME
 	}
 }
 
@@ -354,7 +284,6 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 		}
 
 		fmt.Println("AFTER COST ELEV 1", e)
-		//fmt.Println(elev2)
 	}
 	return lowerCostID
 }
@@ -390,7 +319,6 @@ func saveToDisk(buttonPress elevio.ButtonEvent, cabOrders[config.N_FLOORS] bool)
 				log.Fatal("Failed to backup", err)
 			}
 	}
-
 	//save changes
 	err = file.Sync()
 	if err != nil{ log.Fatal("Cannot create file", err) }
@@ -402,18 +330,14 @@ func LoadFromDisk(e config.Elevator) {
 	if err != nil {
 		log.Fatal("Failed to read from backup", err)
 	}
-	//fmt.Println("fra load :", string(data))
 
 	 backUpOrders := string(data) // srting
 	 backUpOrdersList := strings.Split(backUpOrders, " ") // liste med string
 
 	 for f := 0; f < config.N_FLOORS; f++ {
-			 //order, _ := strconv.Atoi(string(buf[f]))
-		 //fmt.Println(backUpOrders[f])
-		 //fmt.Println("assigning orders from disk: ", backUpOrders)
 		 fmt.Println("backUpOrdersList: ",backUpOrdersList[f])
 		 order, _ := strconv.ParseBool(backUpOrdersList[f])
-		 e.AssignedRequests[f][config.BT_CAB] = order
+		 e.AssignedRequests[f][elevio.BT_Cab] = order
 	 }
 
 	fmt.Println("Loaded from disk array",e.AssignedRequests)

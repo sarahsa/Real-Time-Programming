@@ -1,30 +1,35 @@
 package config
 
-// def "config"
-
-import "../elevio"
-
+import (
+	"time"
+	"../elevio"
+)
 const (
 	N_ELEVATORS = 3
 	N_FLOORS    = 4
 	N_BUTTONS   = 3
 
-	BT_HallUp   = 0
-	BT_HallDown = 1
-	BT_CAB      = 2
+	CH_BUFFERSIZE = 10
 
-	//var LocalQueue[N_FLOORS][N_BUTTONS]bool
+	DOOR_OPEN_TIME time.Duration = 3000
+	TRAVEL_TIME    time.Duration = 2500
+
+	ES_INIT     = 0 //temporary
+	ES_IDLE     = 1
+	ES_MOVING   = 2
+	ES_DOOROPEN = 3
+	ES_STUCK    = 4 //stuck mellom to etasjer -- Hvordan vet vi den er stuck?
+
 )
 
 type Elevator struct {
-	//ID string
 	Floor            int
 	State            int
 	Direction        elevio.MotorDirection
 	AssignedRequests [N_FLOORS][N_BUTTONS]bool
 	LightMatrix      [N_FLOORS][N_BUTTONS - 1]bool
-	//request ButtonEvent
 }
+
 type ElevatorStatusPacket struct {
 	ID             string
 	ElevatorStatus Elevator
@@ -32,16 +37,13 @@ type ElevatorStatusPacket struct {
 
 type OrderPacket struct {
 	Executer string
-	//Floor int
 	Button elevio.ButtonEvent
-	//OrderStatus Status
 }
 
 type AcknowledgmentPacket struct {
 	Sender   string
 	Executer string
 	Button   elevio.ButtonEvent
-	//OrderStatus Status
 }
 
 type OrderMatrix struct {
@@ -52,14 +54,6 @@ type ReceivedAck struct {
 	Button elevio.ButtonEvent
 	Status bool
 }
-
-type Status int
-
-const (
-	OrderNotAssigned Status = 0
-	OrderAssigned           = 1
-	OrderExecuted           = 2
-)
 
 type Queue struct {
 	matrix [N_BUTTONS][N_FLOORS]bool

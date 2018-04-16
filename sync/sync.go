@@ -30,10 +30,10 @@ func SendElevatorUpdate(elevator config.Elevator,
 	}
 }
 
-func SyncAllLights(OrderRegistered [config.N_FLOORS][config.N_BUTTONS - 1]bool) {
+func SyncAllLights(AssignedRequests [config.N_FLOORS][config.N_BUTTONS]bool) {
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_BUTTONS-1; b++ {
-			elevio.SetButtonLamp(elevio.ButtonType(b), f, OrderRegistered[f][b])
+			elevio.SetButtonLamp(elevio.ButtonType(b), f, AssignedRequests[f][b])
 		}
 	}
 }
