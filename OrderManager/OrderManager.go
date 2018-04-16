@@ -58,7 +58,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 
 	peerUpdateCh := make(chan peers.PeerUpdate)
 	peerTxEnable := make(chan bool)
-	received := make(chan config.ReceivedAck)
+	//received := make(chan config.ReceivedAck)
 
 	go peers.Transmitter(15847, myID, peerTxEnable) //15647 , 15670
 	go peers.Receiver(15847, peerUpdateCh)          //15647
@@ -72,7 +72,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 		UpdatedElevatorStatus,
 		ElevatorPacketTrans,
 		myID)
-	go SendOrderUntilAck(ButtonPress, received)
+	//go SendOrderUntilAck(ButtonPress, received)
 
 	for {
 		//sync.SyncAllLights(OrderRegistered)
@@ -117,13 +117,13 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
 
 			}
-			received <- config.ReceivedAck{buttonPress, false}
+			//received <- config.ReceivedAck{buttonPress, false}
 		case recvButtonPacket := <-NewOrderRecv:
 			fmt.Println("REceived new order")
 			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
 
 		case ack := <-AckReceivedOrderRecv:
-			received <- config.ReceivedAck{ack.Button, true}
+			//received <- config.ReceivedAck{ack.Button, true}
 			fmt.Println("Received ack from " + ack.Sender)
 			if ack.Sender != myID {
 				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
