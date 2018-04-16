@@ -14,12 +14,11 @@ const (
 	DOOR_OPEN_TIME time.Duration = 3000
 	TRAVEL_TIME    time.Duration = 2500
 
-	ES_INIT     = 0 //temporary
+	ES_INIT     = 0 
 	ES_IDLE     = 1
 	ES_MOVING   = 2
 	ES_DOOROPEN = 3
-	ES_STUCK    = 4 //stuck mellom to etasjer -- Hvordan vet vi den er stuck?
-
+	ES_STUCK    = 4
 )
 
 type Elevator struct {
