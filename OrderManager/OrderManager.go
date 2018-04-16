@@ -10,9 +10,10 @@ import (
 	"../network/network/bcast"
 	"../network/network/peers"
 	// "../network/network/localip"
-	//"log"
+	"log"
 	//"io/ioutil"
-	//"os"
+	"os"
+	"io"
 	"math/rand"
 	"time"
 
@@ -34,6 +35,8 @@ var allUpdatedElevators = make(map[string]config.Elevator)
 var activeElevators = make(map[string]config.Elevator)
 
 var TestElevatorID []string
+
+var cabOrders [config.N_FLOORS]bool //save CabOrders
 
 //var lights config.LightInfoPacket
 
@@ -107,7 +110,10 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			//Add Cab orders directly to Fsm
 			if buttonPress.Button == elevio.BT_Cab {
 				//Backup cabOrders to file
+				cabOrders[buttonPress.Floor] = true
+				saveToDisk(buttonPress, cabOrders)
 				assignedOrders <- buttonPress
+				//loadFromDisk(activeElevators[myID])
 
 			} else if len(activeElevators) > 1 {
 
@@ -140,11 +146,16 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			}
 
 		case order := <-OrderIsExecuted:
-			fmt.Print("ORDER IS EXECUTED")
+			fmt.Println("ORDER IS EXECUTED")
+			fmt.Println("Orderbutton: ", order.Button)
+			fmt.Println("Setting Caborder to false") // MÅ FIKSES
+			cabOrders[order.Floor] = false
+			saveToDisk(order, cabOrders)
+		
 			AckExecutedTrans <- order
 
 		case ackExecuted := <-AckExecutedRecv:
-			fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
+			//fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
 			fmt.Println("ackExecuted.Button: ", ackExecuted.Button)
 			elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
 			OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
@@ -355,39 +366,89 @@ func lowestNum(num1 string, num2 string) string {
 
 //-----------------------------------------------------------------------------------------------------
 
-/*func saveToDisk(filname string) error{
+func saveToDisk(buttonPress elevio.ButtonEvent, cabOrders[config.N_FLOORS] bool){
 
-	data, err := jason.Marshal( []byte, error )
-		if err != nil{
-			log.Println("Eroor: Failed to backup")
-			return err
+	//file, err := os.OpenFile("backup.txt", os.O_RDWR, 0644)
+	file, err := os.Create("BackUp.txt")
+	fmt.Println("backup created")
+	if err != nil {
+		log.Fatal("Cannot create file", err)
+	}
+
+	defer file.Close()
+
+	//elev := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests, e.LightMatrix} //??
+	//elev.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
+
+	/*for f := 0; f < config.N_FLOORS; f++{
+		if elev.AssignedRequests[f][config.BT_CAB] ==  true {
+			fmt.Println("AssignedOrdersCAB: ", elev.AssignedRequests[f][config.BT_CAB])
+			fmt.Println("Legger true i CabOrdersArray")
+			cabOrders[f] = true
+		}
+	}*/
+
+	for f := 0; f < config.N_FLOORS; f++ {
+		//order := strconv.FormatBool(elev.AssignedRequests[f][config.BT_CAB]) //int(e.AssignedRequests[f][config.BT_CAB])
+		order := strconv.FormatBool(cabOrders[f]) //int(e.AssignedRequests[f][config.BT_CAB])
+		_ , err = file.WriteString(order)
+		_ , err = file.WriteString(" ")
+			fmt.Println("writing to file")
+			if err != nil {
+				log.Fatal("Failed to backup", err)
+			}
+	}
+
+	//save changes
+	err = file.Sync()
+	if err != nil{ log.Fatal("Cannot create file", err) }
+}
+
+func loadFromDisk(e config.Elevator) {
+
+/*	_, err := os.Stat("backUp.txt")
+	if err != nil{
+		log.Println("Backup file found, processing...")
+	}
+
+	file, err := ioutil.ReadFile("backUp.txt")
+		if err != nil {
+		log.Fatal("Failed to read from backup", err)
+		}
+	*/
+
+	file, err := os.OpenFile("backUp.txt", os.O_RDWR, 0644)
+	if err != nil{
+		log.Println("Backup file found, processing...")
+	}
+
+	buf := make([]byte, 1024)
+
+	for {
+
+		_, err = file.Read(buf)
+
+		if err == io.EOF { //end of line
+			break
+		}
+		if err != nil && err != io.EOF{
+			log.Fatal("Failed to load backup: ", err)
 		}
 
-        //func WriteFile(filename string, data []byte, perm os.FileMode) error
-		if err := ioutil.WriteFile(filename, data , 0644); err != nil { // writes to file and checks for returned error
-			log.Println("Error: Failed to backup")
-			return err
-		}
-		return nil
-}*/
+	}
 
-/*func loadFromDisk(filename string) error { //func Stat(name string) (FileInfo, error)
+	for f := 0; f < config.N_FLOORS; f++ {
+		order, _ := strconv.Atoi(string(buf[f]))
+		fmt.Println("order from disk", order)
+		e.AssignedRequests[f][config.BT_CAB] = intToBool(order)
+	}
+		//fmt.Printf("New line %v \n", order)
+}
 
-    var queue
-
-    if _, err := os.State(filename); err == nil {
-        data, err := ioutil.ReadFile(filename)
-        if err != nil{
-        log.Println("Error: Failed to read from backup")
-            return err
-    }
-
-    if err := jason.Unmarshal(data,queue); err != nil {
-        log.Println("Error: failed to Unmarshal")
-    }
-
-    }
-
-    return nil
-
-}*/
+func intToBool(i int)bool  {
+	if i == 1 {
+		return true
+	} else {
+		return false
+	}
+}

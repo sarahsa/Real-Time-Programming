@@ -37,7 +37,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 	motortimer.Stop()
 	for {
 		//Only for debugging purposes
-		switch elevator.State {
+		/*switch elevator.State {
 		case ES_INIT:
 			fmt.Println("elevator.elevator.State: Init")
 		case ES_IDLE:
@@ -66,7 +66,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 			fmt.Println("LastDir: Down")
 		case elevio.MD_Stop:
 			fmt.Println("LastDir: Stop")
-		}
+		}*/
 
 		select {
 		case newOrder := <-Ch_assignedOrders:
