@@ -63,7 +63,7 @@ func main() {
 	ButtonPress := make(chan elevio.ButtonEvent, 10)
 	OrderIsExecuted := make(chan elevio.ButtonEvent, 10)
 
-	MotorTimedOut := make(chan config.OrderMatrix, 10)
+	MotorTimedOut := make(chan config.OrderMatrix, 20)
 
 	// go Fsm.UpdateElevator(Ch_elvator)
 

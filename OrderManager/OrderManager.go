@@ -118,7 +118,9 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				assignedOrders <- buttonPress
 				backUp.LoadFromDisk(activeElevators[myID])
 
-			} else if len(activeElevators) > 1 {
+
+			} else if len(allUpdatedElevators) > 1 {
+				fmt.Println("CALCULATING COST")
 
 				executer := CalculateCost(buttonPress)
 				//executer := AssignOrderToRandomElevator()
@@ -170,6 +172,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			allUpdatedElevators[updatedElevator.ID] = updatedElevator.ElevatorStatus
 
 		case reassignOrders := <-MotorTimedOut:
+			fmt.Println("MotorTimedOut channel")
 			for f := 0; f < config.N_FLOORS; f++ {
 				for b := 0; b < config.N_BUTTONS-1; b++ {
 					if reassignOrders.AssignedOrders[f][b] {
@@ -294,20 +297,27 @@ func timeToIdle(elevator config.Elevator) time.Duration {
 
 	switch elevator.State {
 	case Fsm.ES_IDLE:
+		fmt.Println("Inside IDLE cost")
 		elevator.Direction = requests_chooseDirection(elevator)
 		if elevator.Direction == elevio.MD_Stop {
 			return duration
 		}
 	case Fsm.ES_MOVING:
+		fmt.Println("Inside Moving cost")
 		elevator.Floor += int(elevator.Direction)
 		duration += TRAVEL_TIME / 2
 
 	case Fsm.ES_DOOROPEN:
+		fmt.Println("Inside DOOROPEN cost")
 		duration -= DOOR_OPEN_TIME / 2
 		elevator.Direction = requests_chooseDirection(elevator)
 		if elevator.Direction == elevio.MD_Stop {
 			return duration
 		}
+	case Fsm.ES_STUCK:
+		fmt.Println("Inside STUCK cost")
+		duration = 2* DOOR_OPEN_TIME
+		return duration
 
 	}
 
@@ -339,6 +349,7 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 		fmt.Println("LowerCost: %d", cost)
 		fmt.Println("LowerCostID: ", k)
 		fmt.Println("-----------------------------------")
+
 		if cost == lowerCost {
 			lowerCostID = lowestNum(lowerCostID, k)
 			fmt.Println("-----------COST------------")

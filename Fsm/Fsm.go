@@ -127,7 +127,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 
 			case ES_MOVING:
 				fmt.Println("REset motortimer")
-				motortimer.Reset(10 * time.Second)
+				motortimer.Reset(5 * time.Second)
 				if reachedFloor == 3 || reachedFloor == 0 {
 					fmt.Println("Changing direction due to 0 or 3")
 					changeDirection()
@@ -171,12 +171,13 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					elevio.SetMotorDirection(elevio.MD_Stop)
 
 				}
+				/*
 				if CheckIfAnyOrders() {
 					elevator.State = ES_MOVING
 					elevio.SetMotorDirection(elevator.Direction)
 				} else {
 					elevator.State = ES_IDLE
-				}
+				}*/
 
 				//1) Stoppe HEIS
 				//2) Loade ordre fra backup
@@ -214,6 +215,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				elevator.State = ES_IDLE
 				motortimer.Stop()
 			}
+
 		case <-motortimer.C:
 			fmt.Println("Motor timed out")
 			MotorTimedOut <- config.OrderMatrix{elevator.AssignedRequests}
