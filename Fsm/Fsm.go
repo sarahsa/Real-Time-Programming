@@ -91,12 +91,13 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				}
 			case ES_DOOROPEN:
 				if newOrder.Floor == elevator.Floor {
+					OrderIsExecuted <- newOrder
 					doortimer.Reset(3 * time.Second)
 				} else {
 					addOrder(newOrder)
 				}
 
-			default:
+			case ES_MOVING:
 				addOrder(newOrder)
 				fmt.Println("Orders: %v", elevator.AssignedRequests)
 			}
@@ -165,11 +166,11 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				}
 			case ES_STUCK:
 				elevio.SetMotorDirection(elevio.MD_Stop)
+
 				if CheckOrdersAtFloor(reachedFloor) {
 					lastDirection = elevator.Direction
 					elevator.Direction = elevio.MD_Stop
 					elevio.SetMotorDirection(elevio.MD_Stop)
-
 				}
 				/*
 				if CheckIfAnyOrders() {
@@ -213,14 +214,17 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 				}
 			} else {
 				elevator.State = ES_IDLE
+				Ch_UpdateElevatorStatus <- elevator
 				motortimer.Stop()
 			}
 
 		case <-motortimer.C:
 			fmt.Println("Motor timed out")
+			elevator.State = ES_STUCK
+			Ch_UpdateElevatorStatus <- elevator
 			MotorTimedOut <- config.OrderMatrix{elevator.AssignedRequests}
 			clearHallOrders()
-			elevator.State = ES_STUCK
+
 			//clearOrdre
 			//Init()
 
@@ -233,7 +237,6 @@ func Init() {
 	fmt.Println("Initializing...")
 	elevio.SetDoorOpenLamp(false)
 	fmt.Println("doorclosed")
-	elevator.State = ES_INIT
 
 	for f := 0; f < 4; f++ {
 		for b := elevio.ButtonType(0); b < 3; b++ {
@@ -247,10 +250,12 @@ func Init() {
 		}
 	}
 	if elevio.GetFloor() == -1 {
+		elevator.State = ES_INIT
 		elevio.SetMotorDirection(elevio.MD_Up)
 		elevator.Direction = elevio.MD_Up
 	} else {
 		elevator.Floor = elevio.GetFloor()
+		elevator.State = ES_IDLE
 	}
 
 

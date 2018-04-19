@@ -173,6 +173,9 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 
 		case reassignOrders := <-MotorTimedOut:
 			fmt.Println("MotorTimedOut channel")
+			elem := allUpdatedElevators[myID]
+			elem.State = Fsm.ES_STUCK
+			allUpdatedElevators[myID] = elem
 			for f := 0; f < config.N_FLOORS; f++ {
 				for b := 0; b < config.N_BUTTONS-1; b++ {
 					if reassignOrders.AssignedOrders[f][b] {
@@ -340,10 +343,10 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 	lowerCostID := ""
 
 	for k, e := range allUpdatedElevators {
-		fmt.Println("ELEV 1", e)
+		fmt.Println("Key: ",k,"e.state: ", e.State)
+		if e.State != Fsm.ES_STUCK {
 		elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests, e.LightMatrix} //??
 		elev2.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
-		fmt.Println("ELEV 2:", elev2)
 		cost := timeToIdle(elev2)
 		fmt.Println("-----------COST in FOR------------")
 		fmt.Println("LowerCost: %d", cost)
@@ -364,9 +367,7 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 			fmt.Println("LowerCostID: ", lowerCostID)
 			fmt.Println("-----------------------")
 		}
-
-		fmt.Println("AFTER COST ELEV 1", e)
-		//fmt.Println(elev2)
+	}
 	}
 	return lowerCostID
 }
