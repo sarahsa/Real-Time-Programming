@@ -28,8 +28,6 @@ const (
 //This map might be unnecessary, because its almost the same as the one above
 var allUpdatedElevators = make(map[string]config.Elevator)
 
-var activeElevators = make(map[string]config.Elevator)
-
 var TestElevatorID []string
 
 var cabOrders[config.N_FLOORS]bool //save CabOrders
@@ -85,7 +83,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			if p.New != "" {
 				TestElevatorID = append(TestElevatorID, p.New)
 				addElevator(p.New, Fsm.GetElevatorStatus())
-				activeElevators[p.New] = allUpdatedElevators[p.New]
 			}
 
 
@@ -94,7 +91,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 					fmt.Println("p.Lost= ", p.Lost[i])
 					for f := 0; f < config.N_FLOORS; f++ {
 						for b := 0; b < config.N_BUTTONS; b++ {
-							fmt.Println("activeElevators[p.Lost[i]].AssignedRequests[f][b]= ", activeElevators[p.Lost[i]].AssignedRequests[f][b])
 							if allUpdatedElevators[p.Lost[i]].AssignedRequests[f][b] == true{
 								fmt.Println("CHECK")
 								ButtonPress <- elevio.ButtonEvent{f, elevio.ButtonType(b)}
@@ -116,8 +112,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				cabOrders[buttonPress.Floor] = true
 				backUp.SaveToDisk(buttonPress, cabOrders)
 				assignedOrders <- buttonPress
-				backUp.LoadFromDisk(activeElevators[myID])
-
 
 			} else if len(allUpdatedElevators) > 1 {
 				fmt.Println("CALCULATING COST")
@@ -129,21 +123,24 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 					fmt.Println("AssignedRequests after cost: ", e.AssignedRequests)
 				}
 				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
-
 			}
 			//received <- config.ReceivedAck{buttonPress, false}
 		case recvButtonPacket := <-NewOrderRecv:
 			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
 
+
 		case ack := <-AckReceivedOrderRecv:
 			//received <- config.ReceivedAck{ack.Button, true}
 			fmt.Println("Received ack from " + ack.Sender)
+
+			//elevio.SetButtonLamp((ack.Button).Button, (ack.Button).Floor, true)
+
 			if ack.Sender != myID {
 				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
 				elevio.SetButtonLamp((ack.Button).Button, (ack.Button).Floor, true)
 			}
 
-			fmt.Println("OrderRegistered: %v", OrderRegistered)
+			fmt.Println("OrderRegistered when received: %v", OrderRegistered)
 			if ack.Executer == myID {
 				assignedOrders <- ack.Button
 				fmt.Println("-------------- BUTTON -------------------")
@@ -159,7 +156,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			cabOrders[order.Floor] = false
 			saveToDisk(order, cabOrders)
 
-
 			if order.Button != elevio.BT_Cab {
 				AckExecutedTrans <- order
 			}
@@ -168,8 +164,14 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 		case ackExecuted := <-AckExecutedRecv:
 			//fmt.Print("ORDER IS ACKNOWLEDGMEN EXECUTED")
 			fmt.Println("ackExecuted.Button: ", ackExecuted.Button)
-			elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
-			OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
+			fmt.Println("OrderRegistered after execution: ", OrderRegistered)
+
+			if OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] == true {
+				elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
+				OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
+			}
+			//
+			//
 
 		case updatedElevator := <-ElevatorPacketRecv:
 			allUpdatedElevators[updatedElevator.ID] = updatedElevator.ElevatorStatus

@@ -145,7 +145,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 						OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, elevio.BT_Cab}
 					}
 
-
+					OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
 
 					ClearOrdersAtCurrentFloor(elevator.Floor)
 					elevio.SetDoorOpenLamp(true)
