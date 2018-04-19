@@ -125,12 +125,14 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				executer := CalculateCost(buttonPress)
 				//executer := AssignOrderToRandomElevator()
 				fmt.Println("Executer = ", executer)
+				for _, e := range allUpdatedElevators{
+					fmt.Println("AssignedRequests after cost: ", e.AssignedRequests)
+				}
 				NewOrderTrans <- config.OrderPacket{executer, buttonPress}
 
 			}
 			//received <- config.ReceivedAck{buttonPress, false}
 		case recvButtonPacket := <-NewOrderRecv:
-			fmt.Println("REceived new order")
 			AckReceivedOrderTrans <- config.AcknowledgmentPacket{myID, recvButtonPacket.Executer, recvButtonPacket.Button}
 
 		case ack := <-AckReceivedOrderRecv:
@@ -156,6 +158,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			fmt.Println("Setting Caborder to false") // MÅ FIKSES
 			cabOrders[order.Floor] = false
 			saveToDisk(order, cabOrders)
+
 
 			if order.Button != elevio.BT_Cab {
 				AckExecutedTrans <- order
@@ -192,6 +195,7 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 
 func SendOrderUntilAck(ButtonPressed chan elevio.ButtonEvent, receivedAck chan config.ReceivedAck) {
 	for {
+
 		select {
 		case recAck := <-receivedAck:
 			//Do not send anymore
@@ -249,6 +253,7 @@ func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 			return elevio.MD_Down
 		}
 		return elevio.MD_Stop
+
 	case elevio.MD_Down:
 		if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
@@ -261,8 +266,8 @@ func requests_chooseDirection(elevator config.Elevator) elevio.MotorDirection {
 			return elevio.MD_Up
 		} else if Fsm.IsOrderBelow(elevator) {
 			return elevio.MD_Down
-		}
-		return elevio.MD_Stop
+		}else{
+			return elevio.MD_Stop}
 	default:
 		return elevio.MD_Stop
 	}
@@ -287,9 +292,6 @@ func request_clearAtCurrentFloor(e_old config.Elevator) config.Elevator {
 	for btn := 0; btn < config.N_BUTTONS; btn++ {
 		if e.AssignedRequests[e.Floor][btn] {
 			e.AssignedRequests[e.Floor][btn] = false
-			/*if (onClearedRequest){
-			    onClearedRequest(b)
-			}*/
 		}
 	}
 	return e
@@ -345,29 +347,31 @@ func CalculateCost(buttonPress elevio.ButtonEvent) string {
 	for k, e := range allUpdatedElevators {
 		fmt.Println("Key: ",k,"e.state: ", e.State)
 		if e.State != Fsm.ES_STUCK {
-		elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests, e.LightMatrix} //??
-		elev2.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
-		cost := timeToIdle(elev2)
-		fmt.Println("-----------COST in FOR------------")
-		fmt.Println("LowerCost: %d", cost)
-		fmt.Println("LowerCostID: ", k)
-		fmt.Println("-----------------------------------")
+			if ((buttonPress.Button == elevio.BT_HallUp && e.AssignedRequests[buttonPress.Floor][elevio.BT_HallDown] != true) || ((buttonPress.Button == elevio.BT_HallDown && e.AssignedRequests[buttonPress.Floor][elevio.BT_HallUp] != true))){
+				elev2 := config.Elevator{e.Floor, e.State, e.Direction, e.AssignedRequests, e.LightMatrix} //??
+				elev2.AssignedRequests[buttonPress.Floor][buttonPress.Button] = true
+				cost := timeToIdle(elev2)
+				fmt.Println("-----------COST in FOR------------")
+				fmt.Println("LowerCost: %d", cost)
+				fmt.Println("LowerCostID: ", k)
+				fmt.Println("-----------------------------------")
 
-		if cost == lowerCost {
-			lowerCostID = lowestNum(lowerCostID, k)
-			fmt.Println("-----------COST------------")
-			fmt.Println("LowerCost: %d", lowerCost)
-			fmt.Println("LowerCostID: ", lowerCostID)
-			fmt.Println("-----------------------")
-		} else if cost < lowerCost {
-			lowerCost = cost
-			lowerCostID = k
-			fmt.Println("-----------COST------------")
-			fmt.Println("LowerCost: %d", lowerCost)
-			fmt.Println("LowerCostID: ", lowerCostID)
-			fmt.Println("-----------------------")
+				if cost == lowerCost {
+					lowerCostID = lowestNum(lowerCostID, k)
+					fmt.Println("-----------COST------------")
+					fmt.Println("LowerCost: %d", lowerCost)
+					fmt.Println("LowerCostID: ", lowerCostID)
+					fmt.Println("-----------------------")
+				} else if cost < lowerCost {
+					lowerCost = cost
+					lowerCostID = k
+					fmt.Println("-----------COST------------")
+					fmt.Println("LowerCost: %d", lowerCost)
+					fmt.Println("LowerCostID: ", lowerCostID)
+					fmt.Println("-----------------------")
+				}
+			}
 		}
-	}
 	}
 	return lowerCostID
 }

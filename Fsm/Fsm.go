@@ -95,10 +95,12 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					doortimer.Reset(3 * time.Second)
 				} else {
 					addOrder(newOrder)
+					Ch_UpdateElevatorStatus <- elevator
 				}
 
 			case ES_MOVING:
 				addOrder(newOrder)
+				Ch_UpdateElevatorStatus <- elevator
 				fmt.Println("Orders: %v", elevator.AssignedRequests)
 			}
 
@@ -143,7 +145,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 						OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, elevio.BT_Cab}
 					}
 
-					OrderIsExecuted <- elevio.ButtonEvent{reachedFloor, FromMotorDirectionToButton()}
+
 
 					ClearOrdersAtCurrentFloor(elevator.Floor)
 					elevio.SetDoorOpenLamp(true)
@@ -255,7 +257,6 @@ func Init() {
 		elevator.Direction = elevio.MD_Up
 	} else {
 		elevator.Floor = elevio.GetFloor()
-		elevator.State = ES_IDLE
 	}
 
 
@@ -387,33 +388,32 @@ func IsOrderBelow(e config.Elevator) bool {
 }
 
 func ClearOrdersAtCurrentFloor(floor int) {
-	//fmt.Println("Er inne i ClearOrdersAtCurrentFloor")
 
 	elevator.AssignedRequests[floor][elevio.BT_Cab] = false
 	elevio.SetButtonLamp(elevio.BT_Cab, floor, false)
 	switch elevator.Direction {
 	case elevio.MD_Up:
 		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
-		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
+		//elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
 		fmt.Println("ClearOrders: Case MD_UP")
 		if !IsOrderAbove(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
-			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
+			//elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}
 	case elevio.MD_Down:
 		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
-		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
+		//elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		fmt.Println("ClearOrders: Case MD_Down")
 		if !IsOrderBelow(elevator) {
 			elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
-			elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
+			//elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 		}
 
 	default:
 		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
-		elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
+		//elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
 		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
-		elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
+		//elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
 	}
 }
 
@@ -443,11 +443,6 @@ func DoorTimeout() {
 }
 
 func GetElevatorStatus() config.Elevator {
-	fmt.Println("-----ElevatorStatus------")
-	fmt.Println("floor: ", elevator.Floor)
-	fmt.Println("state: ", elevator.State)
-	fmt.Println("dir: ", elevator.Direction)
-
 	return elevator
 
 }
