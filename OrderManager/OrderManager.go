@@ -93,8 +93,9 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 						for b := 0; b < config.N_BUTTONS; b++ {
 							if allUpdatedElevators[p.Lost[i]].AssignedRequests[f][b] == true{
 								fmt.Println("CHECK")
-								ButtonPress <- elevio.ButtonEvent{f, elevio.ButtonType(b)}
-
+								if elevio.ButtonType(b) != elevio.BT_Cab {
+										ButtonPress <- elevio.ButtonEvent{f, elevio.ButtonType(b)}
+								}
 							}
 						}
 					}
@@ -135,10 +136,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 
 			//elevio.SetButtonLamp((ack.Button).Button, (ack.Button).Floor, true)
 
-			if ack.Sender != myID {
-				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
-				elevio.SetButtonLamp((ack.Button).Button, (ack.Button).Floor, true)
-			}
 
 			fmt.Println("OrderRegistered when received: %v", OrderRegistered)
 			if ack.Executer == myID {
@@ -147,6 +144,12 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				fmt.Println("Exceuter ", ack.Executer)
 				fmt.Println("ButtenEvent", ack.Button.Floor, ack.Button)
 				fmt.Println("-----------------------------------------")
+			}
+
+			if ack.Sender != myID {
+				OrderRegistered[(ack.Button).Floor][int((ack.Button).Button)] = true
+				sync.SyncAllLights(OrderRegistered)
+				//elevio.SetButtonLamp((ack.Button).Button, (ack.Button).Floor, true)
 			}
 
 		case order := <-OrderIsExecuted:
@@ -167,8 +170,10 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 			fmt.Println("OrderRegistered after execution: ", OrderRegistered)
 
 			if OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] == true {
-				elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
+				//elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
 				OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
+				sync.SyncAllLights(OrderRegistered)
+
 			}
 			//
 			//

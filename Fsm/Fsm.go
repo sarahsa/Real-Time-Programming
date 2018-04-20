@@ -273,9 +273,12 @@ func clearHallOrders() {
 //returner true dersom ordren er lagt til, false ellers
 func addOrder(pressedButton elevio.ButtonEvent) {
 	fmt.Println("Er inn i addOrder")
+	if pressedButton.Button == elevio.BT_Cab {
+		elevio.SetButtonLamp(pressedButton.Button, pressedButton.Floor, true)
+	}
 	if elevator.AssignedRequests[pressedButton.Floor][pressedButton.Button] == false {
 		elevator.AssignedRequests[pressedButton.Floor][pressedButton.Button] = true
-		elevio.SetButtonLamp(pressedButton.Button, pressedButton.Floor, true)
+		//elevio.SetButtonLamp(pressedButton.Button, pressedButton.Floor, true)
 
 	}
 }
@@ -390,7 +393,7 @@ func IsOrderBelow(e config.Elevator) bool {
 func ClearOrdersAtCurrentFloor(floor int) {
 
 	elevator.AssignedRequests[floor][elevio.BT_Cab] = false
-	elevio.SetButtonLamp(elevio.BT_Cab, floor, false)
+	//elevio.SetButtonLamp(elevio.BT_Cab, floor, false)
 	switch elevator.Direction {
 	case elevio.MD_Up:
 		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
@@ -413,7 +416,7 @@ func ClearOrdersAtCurrentFloor(floor int) {
 		elevator.AssignedRequests[floor][elevio.BT_HallUp] = false
 		//elevio.SetButtonLamp(elevio.BT_HallUp, floor, false)
 		elevator.AssignedRequests[floor][elevio.BT_HallDown] = false
-		//elevio.SetButtonLamp(elevio.BT_HallDown, floor, false)
+		elevio.SetButtonLamp(elevio.BT_Cab, floor, false)
 	}
 }
 
