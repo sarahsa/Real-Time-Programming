@@ -100,6 +100,9 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 						}
 					}
 				delete(allUpdatedElevators, p.Lost[i])
+				for _, e := range allUpdatedElevators{
+					fmt.Println("AssignedRequests after cost: ", e)
+				}
 				}
 			}
 
@@ -112,7 +115,10 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				//Backup cabOrders to file
 				cabOrders[buttonPress.Floor] = true
 				backUp.SaveToDisk(buttonPress, cabOrders)
-				assignedOrders <- buttonPress
+				if len(allUpdatedElevators)>1 {
+					assignedOrders <- buttonPress
+				}
+
 
 			} else if len(allUpdatedElevators) > 1 {
 				fmt.Println("CALCULATING COST")
