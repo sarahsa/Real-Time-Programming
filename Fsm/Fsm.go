@@ -174,6 +174,7 @@ func Fsm(Ch_assignedOrders chan elevio.ButtonEvent,
 					elevator.Direction = elevio.MD_Stop
 					elevio.SetMotorDirection(elevio.MD_Stop)
 				}
+				elevator.State = ES_IDLE
 				/*
 				if CheckIfAnyOrders() {
 					elevator.State = ES_MOVING

@@ -173,7 +173,6 @@ func OrderManager(NewOrderTrans chan config.OrderPacket,
 				//elevio.SetButtonLamp(ackExecuted.Button, ackExecuted.Floor, false)
 				OrderRegistered[ackExecuted.Floor][int(ackExecuted.Button)] = false
 				sync.SyncAllLights(OrderRegistered)
-
 			}
 			//
 			//
